@@ -1,29 +1,65 @@
-# Welcome to your Lovable project
+# ASEISSOC
 
-This project was built with [Lovable](https://lovable.dev).
+## Offline AI-Powered Security Operations Center for Air-Gapped Networks
 
-## Build with Lovable
+ASEISSOC is an **offline-first Security Operations Center (SOC)** designed for air-gapped and high-security environments where sensitive security data cannot depend on cloud services or internet connectivity.
 
-Open your project in the [Lovable editor](https://lovable.dev) and keep building.
+It helps analysts **ingest, analyze, correlate, and investigate security logs** from systems such as Windows, Linux, firewalls, antivirus/EDR, databases, and applications.
 
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: connect the project to GitHub and every change made in Lovable is committed straight to your repository.
-- **Full ownership**: this code is yours. Push to your repository and your changes sync back into Lovable, ready for your next prompt.
+ASEISSOC combines **rule-based threat detection, event correlation, attack timeline reconstruction, IOC analysis, MITRE ATT&CK mapping, and locally hosted AI** to turn large volumes of raw logs into an understandable security investigation.
 
-## Development
+> **Bring the intelligence to the data — not the sensitive data to the cloud.**
 
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+---
 
-```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
-```
+## 🚨 The Problem
 
-## Built with
+Air-gapped environments are isolated from the internet, but they can still be compromised through:
 
-- TanStack Start
-- TypeScript
-- React
-- Tailwind CSS
+- Infected USB devices
+- Insider threats
+- Compromised contractor systems
+- Supply-chain attacks
+- Malware introduced through controlled data transfers
+
+These environments can generate **thousands or millions of security events**.
+
+During an incident, analysts need to quickly answer:
+
+- What happened?
+- When did it start?
+- Who was involved?
+- Which systems were affected?
+- What evidence exists?
+- What should be done next?
+
+Manually connecting these events is slow and can cause important relationships to be missed.
+
+---
+
+# 💡 Solution
+
+ASEISSOC converts raw logs into a structured investigation:
+
+```text
+Raw Logs
+   ↓
+Ingestion
+   ↓
+Parsing & Normalization
+   ↓
+Threat Detection
+   ↓
+Event Correlation
+   ↓
+Incident Reconstruction
+   ↓
+IOC + MITRE Analysis
+   ↓
+Risk Assessment
+   ↓
+Local AI Investigation
+   ↓
+Recommendations
+   ↓
+Investigation Report
