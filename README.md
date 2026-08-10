@@ -1,4 +1,4 @@
-# ASEISSOC
+# ASEIOSSOC
 
 ## Offline AI-Powered Security Operations Center for Air-Gapped Networks
 
