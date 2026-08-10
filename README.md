@@ -39,7 +39,7 @@ Manually connecting these events is slow and can cause important relationships t
 
 # 💡 Solution
 
-ASEISSOC converts raw logs into a structured investigation:
+ASEIOSSOC converts raw logs into a structured investigation:
 
 ```text
 Raw Logs
