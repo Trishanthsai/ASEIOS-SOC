@@ -1,0 +1,106 @@
+spring:
+  application:
+    name: syntrace-ai
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/syntrace
+    username: postgres
+    password: user123
+    hikari:
+      pool-name: syntrace-pool
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+
+  jpa:
+    hibernate:
+      ddl-auto: ${SYNTRACE_DDL_AUTO:update}
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          batch_size: 100
+        order_inserts: true
+        order_updates: true
+        format_sql: false
+    show-sql: false
+
+  flyway:
+    enabled: false
+
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 200MB
+      max-request-size: 220MB
+      file-size-threshold: 2MB
+
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+
+server:
+  port: ${SYNTRACE_PORT:8080}
+  error:
+    include-message: always
+    include-binding-errors: always
+  compression:
+    enabled: true
+
+syntrace:
+  security:
+    jwt:
+      # Base64 encoded 512-bit secret. MUST be overridden in production.
+      secret: ${SYNTRACE_JWT_SECRET:c3luVHJhY2VBSV9PZmZsaW5lX1NlY3VyaXR5X0ludmVzdGlnYXRpb25fUGxhdGZvcm1fSE1BQ19TSEE1MTJfU2VjcmV0X0tleV8yMDI2}
+      issuer: syntrace-ai
+      access-token-validity-minutes: ${SYNTRACE_JWT_ACCESS_MINUTES:30}
+      refresh-token-validity-days: ${SYNTRACE_JWT_REFRESH_DAYS:7}
+    cors:
+      allowed-origins: ${SYNTRACE_CORS_ORIGINS:http://localhost:5173,http://localhost:3000,http://localhost:8080}
+  storage:
+    # Air-gapped deployments keep raw evidence on local disk only.
+    root: ${SYNTRACE_STORAGE_ROOT:./data/uploads}
+    max-file-size-bytes: 209715200
+    allowed-extensions: log,txt,csv,json,evtx
+  correlation:
+    time-window-minutes: 30
+    min-events-per-chain: 2
+    critical-risk-threshold: 70
+    high-risk-threshold: 45
+  ai:
+    provider: ${SYNTRACE_AI_PROVIDER:template}
+    ollama:
+      base-url: ${SYNTRACE_OLLAMA_URL:http://localhost:11434}
+      model: ${SYNTRACE_OLLAMA_MODEL:mistral}
+      timeout-seconds: 120
+  bootstrap:
+    admin-username: ${SYNTRACE_ADMIN_USER:admin}
+    admin-email: ${SYNTRACE_ADMIN_EMAIL:admin@syntrace.local}
+    admin-password: ${SYNTRACE_ADMIN_PASSWORD:ChangeMe@123}
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: alpha
+    tags-sorter: alpha
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when_authorized
+
+logging:
+  level:
+    root: INFO
+    com.syntrace: DEBUG
+    org.hibernate.SQL: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

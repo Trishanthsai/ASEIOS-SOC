@@ -1,0 +1,75 @@
+# ---------------------------------------------------------------------------
+# SynTrace AI - offline stack (API + PostgreSQL, optional local LLM)
+#
+#   docker compose up -d --build
+#   API      http://localhost:8080
+#   Swagger  http://localhost:8080/swagger-ui.html
+#
+# No service in this file reaches the internet at runtime.
+# ---------------------------------------------------------------------------
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: syntrace-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: syntrace
+      POSTGRES_USER: syntrace
+      POSTGRES_PASSWORD: ${SYNTRACE_DB_PASSWORD:-syntrace}
+    volumes:
+      - syntrace-db:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U syntrace -d syntrace"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [syntrace-net]
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: syntrace-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SYNTRACE_DB_URL: jdbc:postgresql://postgres:5432/syntrace
+      SYNTRACE_DB_USER: syntrace
+      SYNTRACE_DB_PASSWORD: ${SYNTRACE_DB_PASSWORD:-syntrace}
+      SYNTRACE_JWT_SECRET: ${SYNTRACE_JWT_SECRET:-c3luVHJhY2VBSV9PZmZsaW5lX1NlY3VyaXR5X0ludmVzdGlnYXRpb25fUGxhdGZvcm1fSE1BQ19TSEE1MTJfU2VjcmV0X0tleV8yMDI2}
+      SYNTRACE_ADMIN_PASSWORD: ${SYNTRACE_ADMIN_PASSWORD:-ChangeMe@123}
+      SYNTRACE_CORS_ORIGINS: ${SYNTRACE_CORS_ORIGINS:-http://localhost:5173,http://localhost:3000}
+      SYNTRACE_AI_PROVIDER: ${SYNTRACE_AI_PROVIDER:-template}
+      SYNTRACE_OLLAMA_URL: http://ollama:11434
+    volumes:
+      - syntrace-evidence:/app/data
+    ports:
+      - "8080:8080"
+    networks: [syntrace-net]
+
+  # Optional local LLM. Start with:  docker compose --profile llm up -d
+  # Then set SYNTRACE_AI_PROVIDER=ollama and pull a model into the volume once,
+  # on a connected machine, before moving the stack into the enclave.
+  ollama:
+    image: ollama/ollama:latest
+    container_name: syntrace-ollama
+    profiles: ["llm"]
+    restart: unless-stopped
+    volumes:
+      - syntrace-models:/root/.ollama
+    ports:
+      - "11434:11434"
+    networks: [syntrace-net]
+
+volumes:
+  syntrace-db:
+  syntrace-evidence:
+  syntrace-models:
+
+networks:
+  syntrace-net:
+    driver: bridge
