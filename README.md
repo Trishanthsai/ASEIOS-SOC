@@ -4,11 +4,9 @@
 
 **SIH Problem Statement: SIH25235 — Portable Log Analysis Tool for Isolated Networks**
 
-ASEISSOC is an offline security investigation platform designed for **air-gapped and high-security environments** such as Defence, ISRO, DRDO, nuclear facilities, power infrastructure, and research laboratories.
+ASEISSOC is an offline, AI-assisted Security Operations Center designed for **air-gapped and high-security environments** such as Defence, ISRO, DRDO, nuclear facilities, power infrastructure, and research laboratories.
 
-It ingests security logs from multiple sources, normalizes and analyzes them, detects suspicious activity, correlates related events, reconstructs attack timelines, identifies indicators of compromise, and uses a **locally hosted AI model** to generate understandable investigation summaries.
-
-The core principle is simple:
+It helps security analysts analyze large volumes of security logs, detect suspicious activity, correlate related events, reconstruct attack timelines, identify Indicators of Compromise (IOCs), and generate evidence-based investigation reports.
 
 > **Bring the intelligence to the data instead of sending sensitive data to the cloud.**
 
@@ -16,11 +14,11 @@ The core principle is simple:
 
 ## 🚨 Problem
 
-Critical organizations often isolate their most sensitive systems from the internet to reduce external attack exposure.
+Organizations operating critical infrastructure often isolate sensitive systems from the internet. This creates an **air-gapped network**.
 
-This creates an **air-gapped network**.
+However, isolation does not completely prevent cyberattacks.
 
-However, air-gapped systems can still be compromised through:
+Threats can still enter through:
 
 - Infected USB devices
 - Insider threats
@@ -28,7 +26,7 @@ However, air-gapped systems can still be compromised through:
 - Supply-chain attacks
 - Malicious software introduced through controlled data transfers
 
-At the same time, these environments generate huge amounts of security logs from:
+These environments continuously generate large volumes of logs from:
 
 - Windows
 - Linux
@@ -38,24 +36,22 @@ At the same time, these environments generate huge amounts of security logs from
 - Applications
 - Network devices
 
-When an incident occurs, security analysts have to manually examine large volumes of logs to determine:
+When an incident occurs, analysts need to determine:
 
 - What happened?
 - When did the attack begin?
-- Which user was involved?
+- Who was involved?
 - Which systems were affected?
 - What evidence exists?
 - What should be done next?
 
-This makes incident investigation slow, complex, and prone to missing important relationships between events.
+Manually connecting thousands or millions of events is slow, complex, and can cause important relationships between events to be missed.
 
 ---
 
-# 💡 Our Solution
+# 💡 Solution
 
-ASEISSOC acts as an **offline cyber investigation platform** for isolated environments.
-
-Instead of simply displaying millions of raw log entries, ASEISSOC transforms them into a structured investigation.
+ASEISSOC transforms raw security logs into a structured investigation.
 
 ```text
 Raw Security Logs
