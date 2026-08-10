@@ -2,19 +2,21 @@
 
 ## Offline AI-Powered Security Operations Center for Air-Gapped Networks
 
-**SIH Problem Statement: SIH25235 — Portable Log Analysis Tool for Isolated Networks**
-
-ASEISSOC is an offline, AI-assisted Security Operations Center designed for **air-gapped and high-security environments** such as Defence, ISRO, DRDO, nuclear facilities, power infrastructure, and research laboratories.
+ASEISSOC is an offline, AI-assisted Security Operations Center designed for **air-gapped and high-security environments** such as Defence, space research, nuclear facilities, power infrastructure, government laboratories, and critical infrastructure.
 
 It helps security analysts analyze large volumes of security logs, detect suspicious activity, correlate related events, reconstruct attack timelines, identify Indicators of Compromise (IOCs), and generate evidence-based investigation reports.
+
+The core idea is:
 
 > **Bring the intelligence to the data instead of sending sensitive data to the cloud.**
 
 ---
 
-## 🚨 Problem
+# 🚨 Problem
 
-Organizations operating critical infrastructure often isolate sensitive systems from the internet. This creates an **air-gapped network**.
+Critical organizations often isolate sensitive systems from the internet to reduce exposure to external threats.
+
+This creates an **air-gapped network**.
 
 However, isolation does not completely prevent cyberattacks.
 
@@ -25,8 +27,9 @@ Threats can still enter through:
 - Compromised contractor systems
 - Supply-chain attacks
 - Malicious software introduced through controlled data transfers
+- Compromised internal systems
 
-These environments continuously generate large volumes of logs from:
+These environments continuously generate large volumes of security logs from:
 
 - Windows
 - Linux
@@ -51,27 +54,76 @@ Manually connecting thousands or millions of events is slow, complex, and can ca
 
 # 💡 Solution
 
-ASEISSOC transforms raw security logs into a structured investigation.
+ASEISSOC transforms raw security logs into a structured security investigation.
 
 ```text
-Raw Security Logs
-        ↓
-Log Ingestion
-        ↓
-Parser
-        ↓
-Normalizer
-        ↓
-Threat Detection
-        ↓
-Event Correlation
-        ↓
-Incident Reconstruction
-        ↓
-IOC + MITRE Analysis
-        ↓
-Local AI Investigation
-        ↓
-Recommendations
-        ↓
-Investigation Report
+                    RAW SECURITY LOGS
+                           │
+                           ▼
+                    LOG INGESTION
+                           │
+                           ▼
+                         PARSER
+                           │
+                           ▼
+                       NORMALIZER
+                           │
+                           ▼
+                  THREAT DETECTION
+                           │
+                           ▼
+                  EVENT CORRELATION
+                           │
+                           ▼
+              INCIDENT RECONSTRUCTION
+                           │
+              ┌────────────┼────────────┐
+              ▼            ▼            ▼
+             IOCs       TIMELINE      MITRE
+              └────────────┼────────────┘
+                           ▼
+                     RISK ANALYSIS
+                           │
+                           ▼
+                  LOCAL AI ANALYSIS
+                           │
+                           ▼
+              INVESTIGATION ASSISTANT
+                           │
+                           ▼
+             CONTAINMENT RECOMMENDATIONS
+                           │
+                           ▼
+                  INVESTIGATION REPORT
+# 🛡️ Why ASEISSOC?
+
+Traditional security platforms often depend on centralized infrastructure, cloud services, or internet-connected threat intelligence.
+
+That creates a challenge for organizations operating **air-gapped networks**.
+
+Their sensitive logs may contain:
+
+- User identities
+- Internal IP addresses
+- Host information
+- Process activity
+- File activity
+- Security events
+- Potentially classified or sensitive operational information
+
+Sending such data outside the isolated environment may not be acceptable.
+
+ASEISSOC follows a different approach:
+
+```text
+             SENSITIVE LOG DATA
+                     │
+                     ▼
+              ASEISSOC PLATFORM
+                     │
+        ┌────────────┼────────────┐
+        ▼            ▼            ▼
+     Detection    Correlation   Local AI
+                                  │
+                                  ▼
+                            Ollama + LLM
