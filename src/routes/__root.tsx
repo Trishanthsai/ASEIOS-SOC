@@ -77,14 +77,20 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "AESIOS SOC — Offline Security Operations Center" },
-      { name: "description", content: "Offline AI Powered Security Operations Center for Air-Gapped Networks" },
-      { name: "author", content: "AESIOS SOC" },
-      { property: "og:title", content: "AESIOS SOC" },
-      { property: "og:description", content: "Offline Security Operations Center for Air-Gapped Networks" },
+      { title: "ASEIOS-SOC — Offline Security Operations Center" },
+      {
+        name: "description",
+        content: "Offline AI Powered Security Operations Center for Air-Gapped Networks",
+      },
+      { name: "author", content: "ASEIOS-SOC" },
+      { property: "og:title", content: "ASEIOS-SOC" },
+      {
+        property: "og:description",
+        content: "Offline Security Operations Center for Air-Gapped Networks",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@AESIOS" },
+      { name: "twitter:site", content: "@ASEIOS_SOC" },
     ],
     links: [
       {
@@ -93,7 +99,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
     ],
-
   }),
   shellComponent: RootShell,
   component: RootComponent,
