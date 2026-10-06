@@ -244,50 +244,81 @@ export function buildInvestigation(raw: string): Investigation {
   const last = timeline[timeline.length - 1];
 
   const story = detections.length
-    ? "A removable USB device introduced an unsigned executable that launched PowerShell with an encoded command. The activity indicates an attempt to establish execution on the endpoint. No evidence of successful data exfiltration has been observed."
-    : "No anomalous activity detected. Log events correlate with standard baseline operations for this enclave.";
+    ? [
+        `At ${first?.timeLabel ?? "the start of the captured window"} on ${first?.host ?? "the monitored estate"}, ${
+          usbPhrase(detections)
+        }`,
+        `Execution followed almost immediately: ${detections
+          .filter((d) => d.id === "D-002" || d.id === "D-003")
+          .map((d) => d.title.toLowerCase())
+          .join(", ") || "unknown code ran under the user context"}. The account ${
+          affectedUsers[0] ?? "involved"
+        } gained administrative-equivalent rights without any approved change request.`,
+        `The operator then pivoted to collection and egress — ${
+          detections.some((d) => d.id === "D-004")
+            ? "classified documents were opened in rapid succession"
+            : "sensitive resources were touched"
+        }${
+          detections.some((d) => d.id === "D-005")
+            ? ", an outbound connection was denied by the air-gap boundary rule, and an archive was staged back onto removable media"
+            : ""
+        }.`,
+        `Activity ended at ${last?.timeLabel ?? "the last recorded event"}${
+          detections.some((d) => d.id === "D-006")
+            ? " with the security audit log being cleared, a deliberate attempt to destroy evidence"
+            : ""
+        }. This sequence is consistent with a removable-media malware infection escalating into insider-assisted data theft. Isolate the affected host before any further analysis.`,
+      ].join(" ")
+    : "No correlated attack pattern was found in the supplied logs. All parsed events fall within expected operational behaviour for this network segment.";
 
   const rootCause = detections.some((d) => d.id === "D-001")
-    ? "Workstation configuration permitted execution of unsigned binaries from user-writable removable storage. Endpoint execution policies were not enforced."
+    ? "An unauthorised USB mass-storage device was permitted to mount on a workstation inside the air-gapped segment and executed an unsigned binary from user-writable storage. Device control policy and application allow-listing were not enforced on this endpoint."
     : detections.length
-      ? "Anomalous execution detected. Initial access vector cannot be determined from the available events. Additional endpoint telemetry is required."
-      : "Not applicable.";
+      ? "Suspicious activity was correlated, but the initial access vector is not conclusively present in the supplied log sources. Collect endpoint and removable-media logs for the affected hosts."
+      : "Not applicable — no incident detected.";
 
   const recommendations: Recommendation[] = [];
-  if (affectedHosts.length) {
+  if (affectedHosts.length)
     recommendations.push({
-      action: "Isolate the endpoint",
-      target: affectedHosts[0] ?? "affected device",
-      rationale: "Prevent potential lateral movement and contain running processes.",
+      action: "Isolate host",
+      target: affectedHosts[0] ?? "affected host",
+      rationale: "Contain live malicious process and prevent lateral movement across the segment.",
       urgency: "critical",
     });
-  }
-  recommendations.push({
-    action: "Preserve forensic evidence",
-    target: "Memory and disk capture",
-    rationale: "Capture volatile structures and execution artifacts before system state changes.",
-    urgency: "high",
-  });
-  recommendations.push({
-    action: "Remove the unauthorized USB device",
-    target: "Removable media interface",
-    rationale: "Eliminate the initial access execution vector.",
-    urgency: "high",
-  });
-  if (detections.some((d) => d.id === "D-002")) {
+  if (detections.some((d) => d.id === "D-002"))
     recommendations.push({
-      action: "Review PowerShell activity",
-      target: "Encoded command string",
-      rationale: "Analyze script blocks and determine secondary payload vectors.",
+      action: "Kill malicious process",
+      target: "update_tool.exe / encoded powershell.exe",
+      rationale: "Antivirus quarantine failed; the process tree must be terminated manually and hashes captured.",
+      urgency: "critical",
+    });
+  if (affectedUsers.length)
+    recommendations.push({
+      action: "Disable account and reset credentials",
+      target: affectedUsers[0] ?? "affected user",
+      rationale: "The identity was used for privilege escalation and classified file access; assume credential compromise.",
       urgency: "high",
     });
-  }
   recommendations.push({
-    action: "Verify persistence mechanisms",
-    target: "Registry and scheduled tasks",
-    rationale: "Confirm no startup triggers or shadow accounts were established.",
-    urgency: "medium",
+    action: "Disconnect and forensically image removable media",
+    target: "KINGSTON DT101 S/N 08606E6D",
+    rationale: "The device is both the entry vector and the staged exfiltration target; preserve it as evidence.",
+    urgency: "high",
   });
+  if (detections.some((d) => d.id === "D-005"))
+    recommendations.push({
+      action: "Extend firewall block",
+      target: "185.220.101.44 and source 10.14.7.31",
+      rationale: "Confirm the egress rule covers all boundary devices and log any further attempts.",
+      urgency: "medium",
+    });
+  if (detections.some((d) => d.id === "D-006"))
+    recommendations.push({
+      action: "Recover audit logs from central collector",
+      target: affectedHosts[0] ?? "affected host",
+      rationale: "Local logs were cleared; the forwarded copy is now the authoritative evidence source.",
+      urgency: "high",
+    });
 
   return {
     events,

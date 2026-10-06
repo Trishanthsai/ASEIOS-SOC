@@ -59,7 +59,7 @@ public class ReportService {
                                 Comparator.nullsLast(Comparator.naturalOrder())))
                         .map(mapper::toDto).toList())
                 .recommendations(incident.getRecommendations().stream().map(mapper::toDto).toList())
-                .analystNotes("Generated offline by AESIOS SOC. No evidence left the enclave during analysis.")
+                .analystNotes("Generated offline by SynTrace AI. No evidence left the enclave during analysis.")
                 .build();
     }
 }

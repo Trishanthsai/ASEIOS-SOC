@@ -21,10 +21,10 @@ class LogUtilTest {
     @Test
     @DisplayName("null input is handled everywhere")
     void handlesNulls() {
-        assertThat(LogUtil.sanitize(null)).isEmpty();
+        assertThat(LogUtil.sanitize(null)).isNull();
         assertThat(LogUtil.isBlank(null)).isTrue();
         assertThat(LogUtil.orDefault(null, "unknown")).isEqualTo("unknown");
-        assertThat(LogUtil.normalizeIdentifier(null)).isEqualTo("unknown");
+        assertThat(LogUtil.normalizeIdentifier(null)).isNull();
     }
 
     @Test

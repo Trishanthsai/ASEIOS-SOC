@@ -39,6 +39,37 @@ public class ChatController {
     }
 
     /**
+     * Real-time Server-Sent Events (SSE) streaming endpoint for token-by-token rendering.
+     */
+    @PostMapping(value = "/stream", produces = org.springframework.http.MediaType.TEXT_EVENT_STREAM_VALUE)
+    @Operation(summary = "Stream assistant answer token-by-token over Server-Sent Events")
+    public org.springframework.web.servlet.mvc.method.annotation.SseEmitter streamAsk(@Valid @RequestBody ChatRequest request) {
+        org.springframework.web.servlet.mvc.method.annotation.SseEmitter emitter = new org.springframework.web.servlet.mvc.method.annotation.SseEmitter(60000L);
+        
+        java.util.concurrent.CompletableFuture.runAsync(() -> {
+            try {
+                ChatResponse response = chatService.ask(request);
+                String text = response.answer();
+                String[] words = text.split("(?<=\\s)|(?=\\n)");
+                
+                for (String word : words) {
+                    emitter.send(org.springframework.web.servlet.mvc.method.annotation.SseEmitter.event()
+                            .data(word)
+                            .name("token"));
+                    Thread.sleep(25); // Smooth streaming pacing
+                }
+                emitter.send(org.springframework.web.servlet.mvc.method.annotation.SseEmitter.event()
+                        .data("[DONE]")
+                        .name("complete"));
+                emitter.complete();
+            } catch (Exception e) {
+                emitter.completeWithError(e);
+            }
+        });
+        return emitter;
+    }
+
+    /**
      * @return suggested opening questions for the console
      */
     @GetMapping("/suggestions")

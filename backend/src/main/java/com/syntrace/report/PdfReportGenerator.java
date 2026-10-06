@@ -420,7 +420,7 @@ public class PdfReportGenerator {
 
         private FooterEvent(ReportDTO report) {
             this.classification = LogUtil.orDefault(report.classification(), AppConstants.DEFAULT_CLASSIFICATION);
-            this.reference = LogUtil.orDefault(report.incidentCode(), "AESIOS")
+            this.reference = LogUtil.orDefault(report.incidentCode(), "SYNTRACE")
                     + " | " + DateUtil.stamp(report.generatedAt() == null ? Instant.now() : report.generatedAt());
         }
 

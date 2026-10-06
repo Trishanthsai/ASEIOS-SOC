@@ -24,18 +24,11 @@ import java.util.stream.Collectors;
 @Service
 public class ThreatDetectionService {
 
-    private final List<DetectionRule> rules;
-    private final Map<String, DetectionRule> rulesById;
+    private final DynamicRuleManagerService dynamicRuleManagerService;
 
-    /**
-     * @param rules every detection rule bean on the classpath
-     */
-    public ThreatDetectionService(List<DetectionRule> rules) {
-        this.rules = rules.stream().sorted(Comparator.comparingInt(DetectionRule::order)).toList();
-        this.rulesById = this.rules.stream()
-                .collect(Collectors.toMap(DetectionRule::ruleId, Function.identity()));
-        log.info("Threat detection engine loaded with {} rules: {}", this.rules.size(),
-                this.rules.stream().map(DetectionRule::ruleId).toList());
+    public ThreatDetectionService(DynamicRuleManagerService dynamicRuleManagerService) {
+        this.dynamicRuleManagerService = dynamicRuleManagerService;
+        log.info("Threat detection engine loaded with dynamic rule manager");
     }
 
     /**
@@ -54,7 +47,8 @@ public class ThreatDetectionService {
         DetectionContext context = new DetectionContext(investigation, events);
         List<Threat> threats = new ArrayList<>();
 
-        for (DetectionRule rule : rules) {
+        List<DetectionRule> activeRules = dynamicRuleManagerService.getAllActiveRules();
+        for (DetectionRule rule : activeRules) {
             try {
                 if (!rule.matches(context)) {
                     continue;
@@ -77,10 +71,10 @@ public class ThreatDetectionService {
     }
 
     /**
-     * @return the immutable rule catalogue, exposed for the statistics endpoint
+     * @return the active rule catalogue, exposed for the statistics endpoint
      */
     public List<DetectionRule> catalogue() {
-        return rules;
+        return dynamicRuleManagerService.getAllActiveRules();
     }
 
     /**
@@ -88,6 +82,9 @@ public class ThreatDetectionService {
      * @return the matching rule, or {@code null}
      */
     public DetectionRule byId(String ruleId) {
-        return rulesById.get(ruleId);
+        return dynamicRuleManagerService.getAllActiveRules().stream()
+                .filter(r -> r.ruleId().equalsIgnoreCase(ruleId))
+                .findFirst()
+                .orElse(null);
     }
 }

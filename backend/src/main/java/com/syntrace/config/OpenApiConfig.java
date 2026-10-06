@@ -22,17 +22,17 @@ public class OpenApiConfig {
     public OpenAPI synTraceOpenAPI() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("AESIOS SOC API")
+                        .title("SynTrace AI API")
                         .version("1.0.0")
                         .description("""
-                                Offline AI Powered Security Operations Center Platform for air-gapped networks.
+                                Offline AI Powered Security Investigation Platform for air-gapped networks.
 
                                 Pipeline: Upload -> Parser -> Normalizer -> Threat Detection -> Correlation
-                                -> Offline AI -> Investigation Summary -> Containment Recommendations -> PDF Report.
+                                -> Offline AI -> Attack Story -> Containment Recommendations -> PDF Report.
 
                                 All processing happens inside the isolated network. No egress is performed.
                                 """)
-                        .contact(new Contact().name("AESIOS SOC").email("security@aesios.local"))
+                        .contact(new Contact().name("SynTrace AI").email("security@syntrace.local"))
                         .license(new License().name("Proprietary")))
                 .servers(List.of(new Server().url("/").description("Local air-gapped deployment")))
                 .addSecurityItem(new SecurityRequirement().addList(BEARER_SCHEME))

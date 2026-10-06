@@ -118,17 +118,16 @@ public class WindowsParser implements ParserStrategy {
 
     private NormalizedEvent fallback(String line, long lineNumber) {
         Matcher idMatcher = EVENT_ID.matcher(line);
-        String eventCode = idMatcher.find() ? idMatcher.group(1) : null;
-        Instant timestamp = ParserSupport.parseTimestamp(line.length() > 19 ? line.substring(0, 19) : line);
-        if (timestamp == null) {
-            timestamp = Instant.now();
+        if (!idMatcher.find()) {
+            return null;
         }
+        Instant timestamp = ParserSupport.parseTimestamp(line.length() > 19 ? line.substring(0, 19) : line);
         return NormalizedEvent.builder()
                 .timestamp(timestamp)
                 .hostname(ParserSupport.keyValue(line, "Computer"))
                 .username(ParserSupport.normalizeAccount(ParserSupport.keyValue(line, "Account")))
                 .eventSource("Windows-Event")
-                .eventCode(eventCode)
+                .eventCode(idMatcher.group(1))
                 .message(line)
                 .severity(Severity.INFO)
                 .sourceType(sourceType())
