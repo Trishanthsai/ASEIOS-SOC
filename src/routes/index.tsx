@@ -3,27 +3,36 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
   AlertTriangle,
+  Award,
   BookOpen,
+  Calculator,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
   Cpu,
+  Crosshair,
   Database,
+  DollarSign,
   Download,
   FileCode,
   FileText,
+  Flame,
   HardDrive,
   Layers,
   Lock,
   Pause,
   Play,
+  QrCode,
+  Radar,
   Radio,
   RefreshCw,
   Search,
   Send,
   Server,
+  ShieldAlert,
   ShieldCheck,
   Sparkles,
+  Target,
   Terminal,
   TrendingUp,
   UploadCloud,
@@ -31,6 +40,12 @@ import {
   X,
   Zap,
 } from "lucide-react";
+
+import { TacticalContainmentModal } from "@/components/TacticalContainmentModal";
+import { AttackSimulatorModal } from "@/components/AttackSimulatorModal";
+import { DeceptionCanaryGrid } from "@/components/DeceptionCanaryGrid";
+import { CommercialRoiCalculator } from "@/components/CommercialRoiCalculator";
+import { OpticalDataDiodeModal } from "@/components/OpticalDataDiodeModal";
 
 import { SAMPLE_RAW_LOGS } from "@/data/sampleLogs";
 import {
@@ -85,10 +100,16 @@ export function Dashboard() {
   const [autoScroll, setAutoScroll] = useState(true);
   const terminalEndRef = useRef<HTMLDivElement>(null);
 
+  // Injected / Simulated Logs from Attack Simulator & Canaries
+  const [injectedLogs, setInjectedLogs] = useState<string[]>([]);
+  const [isContained, setIsContained] = useState(false);
+
   // Active processed raw log string
   const activeRawLogs = useMemo(() => {
-    return sampleLogLines.slice(0, streamIndex).join("\n");
-  }, [sampleLogLines, streamIndex]);
+    const base = sampleLogLines.slice(0, streamIndex);
+    const combined = [...base, ...injectedLogs];
+    return combined.join("\n");
+  }, [sampleLogLines, streamIndex, injectedLogs]);
 
   // Main correlation engine run
   const analyzed = useMemo<Investigation>(() => {
@@ -97,7 +118,7 @@ export function Dashboard() {
 
   // UI Tabs & Notes State
   const [activeBottomTab, setActiveBottomTab] = useState<
-    "evidence" | "iocs" | "devices" | "users" | "notes" | "forensics" | "signatures" | "reports"
+    "evidence" | "iocs" | "devices" | "users" | "notes" | "forensics" | "signatures" | "reports" | "containment" | "simulator" | "canaries" | "roi" | "diode"
   >("evidence");
   
   const [analystNotes, setAnalystNotes] = useState(() => {
@@ -119,6 +140,11 @@ export function Dashboard() {
   const [showSignatureModal, setShowSignatureModal] = useState(false);
   const [showForensicModal, setShowForensicModal] = useState(false);
   const [showHardwareModal, setShowHardwareModal] = useState(false);
+  const [showContainmentModal, setShowContainmentModal] = useState(false);
+  const [showSimulatorModal, setShowSimulatorModal] = useState(false);
+  const [showCanaryModal, setShowCanaryModal] = useState(false);
+  const [showRoiModal, setShowRoiModal] = useState(false);
+  const [showDiodeModal, setShowDiodeModal] = useState(false);
   const [hardwareProfile, setHardwareProfile] = useState<"ULTRA_LOW_SPEC" | "BALANCED_CPU" | "HIGH_PERFORMANCE_GPU">("BALANCED_CPU");
 
   // WebSocket Live Connection State
@@ -639,6 +665,59 @@ Provide a dense, professional, fact-grounded answer:`;
             <span className="text-[9px] font-bold uppercase font-mono">Profile: {hardwareProfile}</span>
           </button>
 
+          {/* SOAR Tactical Containment Trigger */}
+          <button
+            onClick={() => setShowContainmentModal(true)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded transition-colors cursor-pointer border ${
+              isContained
+                ? "bg-emerald-950/40 border-emerald-500/60 text-emerald-300"
+                : analyzed.riskScore >= 75
+                  ? "bg-red-600/30 hover:bg-red-600/50 border-red-500 text-red-200 animate-pulse font-bold"
+                  : "bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-300"
+            }`}
+          >
+            <ShieldAlert className={`size-3 ${isContained ? "text-emerald-400" : "text-red-400"}`} />
+            <span className="text-[9px] font-bold uppercase font-mono">
+              {isContained ? "SOAR: Host Quarantined" : "SOAR Killswitch"}
+            </span>
+          </button>
+
+          {/* Attack Simulator Trigger */}
+          <button
+            onClick={() => setShowSimulatorModal(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1 bg-sky-950/30 hover:bg-sky-950/50 border border-sky-500/40 rounded text-sky-300 transition-colors cursor-pointer"
+          >
+            <Target className="size-3 text-sky-400" />
+            <span className="text-[9px] font-bold uppercase font-mono">Attacks (48+)</span>
+          </button>
+
+          {/* Honey-Canaries Trigger */}
+          <button
+            onClick={() => setShowCanaryModal(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-950/30 hover:bg-amber-950/50 border border-amber-500/40 rounded text-amber-300 transition-colors cursor-pointer"
+          >
+            <Radar className="size-3 text-amber-400" />
+            <span className="text-[9px] font-bold uppercase font-mono">Honey-Canaries</span>
+          </button>
+
+          {/* Commercial ROI Trigger */}
+          <button
+            onClick={() => setShowRoiModal(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded text-slate-300 transition-colors cursor-pointer"
+          >
+            <Calculator className="size-3 text-emerald-400" />
+            <span className="text-[9px] font-bold uppercase font-mono">Commercial ROI</span>
+          </button>
+
+          {/* Optical Data Diode Trigger */}
+          <button
+            onClick={() => setShowDiodeModal(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1 bg-purple-950/30 hover:bg-purple-950/50 border border-purple-500/40 rounded text-purple-300 transition-colors cursor-pointer"
+          >
+            <Radio className="size-3 text-purple-400" />
+            <span className="text-[9px] font-bold uppercase font-mono">Optical Diode</span>
+          </button>
+
           {/* Forensic Evidence Trigger */}
           <button
             onClick={() => setShowForensicModal(true)}
@@ -653,6 +732,32 @@ Provide a dense, professional, fact-grounded answer:`;
           </span>
         </div>
       </header>
+
+      {/* REAL-TIME REMEDIATION / CONTAINMENT BANNER */}
+      {isContained && (
+        <div className="mb-4 flex items-center justify-between border-2 border-emerald-500 bg-emerald-950/40 px-5 py-3 rounded-md text-xs text-emerald-200 shadow-lg shadow-emerald-950/50 font-sans">
+          <div className="flex items-center gap-3">
+            <ShieldCheck className="size-5 text-emerald-400 shrink-0" />
+            <div>
+              <div className="font-extrabold uppercase tracking-wider text-emerald-100 flex items-center gap-2">
+                ACTIVE MICRO-CONTAINMENT EXECUTED: WIN-HOST-DRDO-14 QUARANTINED
+                <span className="bg-emerald-500 text-black text-[9px] px-1.5 py-0.5 rounded font-mono font-bold">
+                  MTTR: 412ms
+                </span>
+              </div>
+              <p className="text-[11px] text-emerald-300 mt-0.5">
+                Host isolated via kernel firewall • Malicious PID 4412 terminated • Removable volume E:\ dismounted • Session revoked.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setIsContained(false)}
+            className="px-2.5 py-1 bg-emerald-900/50 hover:bg-emerald-900/70 rounded text-emerald-300 border border-emerald-500/40 text-[9.5px] uppercase font-bold cursor-pointer"
+          >
+            Reset Containment
+          </button>
+        </div>
+      )}
 
       {/* REAL-TIME CRITICAL INCIDENT PUSH BANNER */}
       {liveSirenAlert && (
@@ -894,14 +999,35 @@ Provide a dense, professional, fact-grounded answer:`;
               <div className="h-3 w-full bg-slate-800/80 overflow-hidden rounded-full mt-4">
                 <div
                   className={`h-full rounded-full transition-all duration-700 ${
-                    analyzed.riskScore >= 75 ? "bg-red-500" : "bg-amber-500"
+                    isContained ? "bg-emerald-500" : analyzed.riskScore >= 75 ? "bg-red-500" : "bg-amber-500"
                   }`}
-                  style={{ width: `${analyzed.riskScore}%` }}
+                  style={{ width: `${isContained ? 0 : analyzed.riskScore}%` }}
                 />
               </div>
 
+              {/* TACTICAL SOAR CONTAINMENT TRIGGER BUTTON */}
+              <div className="mt-3">
+                {isContained ? (
+                  <button
+                    onClick={() => setShowContainmentModal(true)}
+                    className="w-full py-1.5 bg-emerald-950/40 hover:bg-emerald-950/60 border border-emerald-500/50 text-emerald-300 rounded font-bold uppercase text-[10px] flex items-center justify-center gap-1.5 cursor-pointer font-sans"
+                  >
+                    <ShieldCheck className="size-3.5 text-emerald-400" />
+                    Host Quarantined &amp; Contained (View SOAR Log)
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setShowContainmentModal(true)}
+                    className="w-full py-1.5 bg-red-600/30 hover:bg-red-600/50 border border-red-500 text-red-200 rounded font-bold uppercase text-[10px] flex items-center justify-center gap-1.5 cursor-pointer font-sans animate-pulse"
+                  >
+                    <Zap className="size-3.5 text-red-400" />
+                    Execute Tactical Killswitch (Stop Attack Live)
+                  </button>
+                )}
+              </div>
+
               {/* Risk Factors */}
-              <div className="mt-4 pt-3 border-t border-slate-800/40">
+              <div className="mt-3 pt-3 border-t border-slate-800/40">
                 <span className="text-[9px] font-sans font-bold text-slate-500 uppercase tracking-wider block mb-2">
                   Risk Factors:
                 </span>
@@ -1232,19 +1358,31 @@ Provide a dense, professional, fact-grounded answer:`;
             { id: "users", label: "Affected Users", icon: User },
             { id: "signatures", label: "Signature Pack Manager", icon: Zap },
             { id: "forensics", label: "Forensic Evidence Locker", icon: Lock },
+            { id: "containment", label: "SOAR Containment", icon: ShieldAlert },
+            { id: "simulator", label: "Attack Matrix (48+)", icon: Target },
+            { id: "canaries", label: "Honey-Canaries (0% FPR)", icon: Radar },
+            { id: "roi", label: "Commercial ROI", icon: DollarSign },
+            { id: "diode", label: "Optical Diode", icon: Radio },
             { id: "notes", label: "Analyst Notes", icon: BookOpen },
             { id: "reports", label: "Export Reports", icon: FileText },
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveBottomTab(tab.id as any)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] uppercase tracking-wider transition-all duration-150 cursor-pointer ${
+              onClick={() => {
+                if (tab.id === "containment") setShowContainmentModal(true);
+                else if (tab.id === "simulator") setShowSimulatorModal(true);
+                else if (tab.id === "canaries") setShowCanaryModal(true);
+                else if (tab.id === "roi") setShowRoiModal(true);
+                else if (tab.id === "diode") setShowDiodeModal(true);
+                else setActiveBottomTab(tab.id as any);
+              }}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-[9.5px] uppercase tracking-wider transition-all duration-150 cursor-pointer ${
                 activeBottomTab === tab.id
                   ? "bg-slate-800 text-white font-bold border border-slate-700"
                   : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
               }`}
             >
-              <tab.icon className="size-3.5" />
+              <tab.icon className="size-3" />
               {tab.label}
             </button>
           ))}
@@ -1927,6 +2065,60 @@ Provide a dense, professional, fact-grounded answer:`;
           </div>
         </div>
       )}
+
+      {/* ========================================================
+          BREAKTHROUGH MODALS (SOAR, ATTACK SIMULATOR, CANARIES, ROI, DIODE)
+         ======================================================== */}
+      {/* 1. Tactical SOAR Micro-Containment & Killswitch */}
+      <TacticalContainmentModal
+        isOpen={showContainmentModal}
+        onClose={() => setShowContainmentModal(false)}
+        targetHost="WIN-HOST-DRDO-14"
+        isContained={isContained}
+        onExecuteContainment={() => setIsContained(true)}
+      />
+
+      {/* 2. Attack Simulator & 48+ MITRE Matrix */}
+      <AttackSimulatorModal
+        isOpen={showSimulatorModal}
+        onClose={() => setShowSimulatorModal(false)}
+        onInjectAttack={(attackName, logs) => {
+          setInjectedLogs((prev) => [...prev, ...logs]);
+          setIsContained(false);
+          setLiveSirenAlert({
+            rule: attackName,
+            host: "WIN-HOST-DRDO-14",
+            severity: "CRITICAL",
+          });
+        }}
+      />
+
+      {/* 3. Deception Honey-Canary Grid (0% False Positives) */}
+      <DeceptionCanaryGrid
+        isOpen={showCanaryModal}
+        onClose={() => setShowCanaryModal(false)}
+        onTriggerTripwire={(target) => {
+          setLiveSirenAlert({
+            rule: "HONEY-CANARY TRIPPED: " + target,
+            host: "WIN-HOST-DRDO-14",
+            severity: "CRITICAL",
+          });
+        }}
+      />
+
+      {/* 4. Commercial ROI & Cyber Insurance Calculator */}
+      <CommercialRoiCalculator
+        isOpen={showRoiModal}
+        onClose={() => setShowRoiModal(false)}
+      />
+
+      {/* 5. Bi-Directional Optical Air-Gap Data Diode */}
+      <OpticalDataDiodeModal
+        isOpen={showDiodeModal}
+        onClose={() => setShowDiodeModal(false)}
+        evidenceHash="8f4b2b1a9e34c718a22d561e44f801bc3d2e99a11f54d68e7b99c012fa3829dc"
+        incidentId="AES-2026-8941"
+      />
     </main>
   );
 }
