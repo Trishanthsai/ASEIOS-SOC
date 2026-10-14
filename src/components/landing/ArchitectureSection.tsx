@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Server,
   Cpu,
@@ -10,14 +10,22 @@ import {
   CloudOff,
   X,
   CheckCircle2,
-  ArrowDown,
+  ArrowRight,
+  Play,
+  Pause,
+  RotateCcw,
+  Zap,
+  Activity,
+  Layers,
 } from "lucide-react";
+import { ScrollReveal } from "@/components/ui/ScrollReveal";
 
 interface ArchNode {
   id: string;
   step: string;
   icon: typeof Server;
   name: string;
+  workflowStage: string;
   subtitle: string;
   status: string;
   statusType: "input" | "processing" | "detection" | "persistent" | "offline" | "active";
@@ -33,6 +41,7 @@ const ARCH_NODES: ArchNode[] = [
   {
     id: "sources",
     step: "01",
+    workflowStage: "LOG INGESTION",
     icon: Server,
     name: "SECURITY SOURCES",
     subtitle: "Windows / Sysmon / Linux / FW / DB",
@@ -49,9 +58,10 @@ const ARCH_NODES: ArchNode[] = [
   {
     id: "engine",
     step: "02",
+    workflowStage: "NORMALIZATION",
     icon: Cpu,
-    name: "ASEIOS-SOC ENGINE",
-    subtitle: "Spring Boot · Java 21",
+    name: "PARSING & NORMALIZATION",
+    subtitle: "Spring Boot · Java 21 · ParserFactory",
     status: "PROCESSING",
     statusType: "processing",
     summary:
@@ -65,9 +75,10 @@ const ARCH_NODES: ArchNode[] = [
   {
     id: "threat",
     step: "03",
+    workflowStage: "THREAT DETECTION & CORRELATION",
     icon: Shield,
-    name: "THREAT ANALYSIS",
-    subtitle: "Rules · IOC · MITRE ATT&CK",
+    name: "DETECTION & CORRELATION",
+    subtitle: "11 Modular Rules · 30-min Windows",
     status: "DETECTION",
     statusType: "detection",
     summary:
@@ -81,9 +92,10 @@ const ARCH_NODES: ArchNode[] = [
   {
     id: "evidence",
     step: "04",
+    workflowStage: "EVIDENCE PERSISTENCE",
     icon: Database,
-    name: "LOCAL EVIDENCE",
-    subtitle: "PostgreSQL 16",
+    name: "LOCAL EVIDENCE STORE",
+    subtitle: "PostgreSQL 16 · Flyway Migrations",
     status: "PERSISTENT",
     statusType: "persistent",
     summary:
@@ -97,13 +109,14 @@ const ARCH_NODES: ArchNode[] = [
   {
     id: "ai",
     step: "05",
+    workflowStage: "INCIDENT INVESTIGATION",
     icon: Bot,
-    name: "LOCAL AI / OLLAMA",
-    subtitle: "Ollama / deterministic fallback",
+    name: "OFFLINE AI ASSISTANT",
+    subtitle: "Local Ollama / Deterministic Fallback",
     status: "OFFLINE",
     statusType: "offline",
     summary:
-      "Optional locally hosted Ollama models help analysts interpret investigation evidence without sending security data to external services.",
+      "Locally hosted Ollama models evaluate evidence chains to generate root cause summaries and investigative guidance without third-party APIs.",
     techStack: "Ollama (Localhost:11434) · Deterministic Template Fallback",
     enclaveRole:
       "Evidence-grounded local LLM assistance. Cross-references confirmed telemetry to explain attack paths and draft investigative steps, falling back cleanly to deterministic templates if offline.",
@@ -113,9 +126,10 @@ const ARCH_NODES: ArchNode[] = [
   {
     id: "console",
     step: "06",
+    workflowStage: "FORENSIC REPORTING",
     icon: Terminal,
-    name: "ANALYST CONSOLE",
-    subtitle: "React · TanStack",
+    name: "ANALYST CONSOLE & REPORTS",
+    subtitle: "React 19 · Cryptographic PDF Dossier",
     status: "ACTIVE",
     statusType: "active",
     summary:
@@ -175,210 +189,135 @@ function getStatusBadge(type: ArchNode["statusType"], text: string) {
   }
 }
 
-function NodeCard({
-  node,
-  isActive,
-  onSelect,
-  className = "",
-  activeBorderClass = "border-cyan-400 bg-cyan-950/30 shadow-[0_0_20px_rgba(6,182,212,0.2)] ring-1 ring-cyan-500/30",
-  focusRingClass = "focus-visible:ring-cyan-400",
-  iconClass = "text-cyan-400",
-}: {
-  node: ArchNode;
-  isActive: boolean;
-  onSelect: () => void;
-  className?: string;
-  activeBorderClass?: string;
-  focusRingClass?: string;
-  iconClass?: string;
-}) {
-  const Icon = node.icon;
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      aria-label={`Inspect ${node.name} architecture stage`}
-      aria-pressed={isActive}
-      onClick={onSelect}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          onSelect();
-        }
-      }}
-      className={`rounded-xl border p-4 sm:p-5 transition-all cursor-pointer text-left focus:outline-none focus-visible:ring-2 ${focusRingClass} ${className} ${
-        isActive
-          ? activeBorderClass
-          : "border-slate-800 bg-[#090f1e] hover:border-slate-700 hover:bg-[#0c1426]"
-      }`}
-    >
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-        <div className="flex items-center gap-2.5">
-          <span className="font-mono text-[10px] font-bold text-cyan-400 bg-cyan-950/80 border border-cyan-500/30 px-1.5 py-0.5 rounded">
-            NODE {node.step}
-          </span>
-          <Icon className={`size-4 ${iconClass}`} />
-          <span className="font-mono text-xs sm:text-sm font-bold text-white tracking-wide">
-            {node.name}
-          </span>
-        </div>
-        {getStatusBadge(node.statusType, node.status)}
-      </div>
-
-      <div className="text-[11px] font-mono text-slate-400 mb-2">
-        {node.subtitle}
-      </div>
-
-      {node.sources && (
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 pt-2 border-t border-slate-800/80">
-          {node.sources.map((src) => (
-            <div
-              key={src}
-              className="rounded bg-[#050914] border border-slate-800 px-2 py-1 text-center font-mono text-[10px] text-slate-300 font-medium"
-            >
-              {src}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {node.summary && !node.sources && (
-        <p className="text-xs text-slate-400 leading-relaxed mb-3">
-          {node.summary}
-        </p>
-      )}
-
-      {node.capabilities && (
-        <div className="flex flex-wrap gap-1.5 pt-2 border-t border-slate-800/80">
-          {node.capabilities.map((cap) => (
-            <span
-              key={cap}
-              className="rounded bg-[#050914] border border-slate-800 px-2 py-0.5 font-mono text-[10px] text-slate-300"
-            >
-              {cap}
-            </span>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 export function ArchitectureSection() {
   const [activeNodeId, setActiveNodeId] = useState<string>("engine");
+  const [isPlayingFlow, setIsPlayingFlow] = useState(true);
+  const [flowStep, setFlowStep] = useState(1);
+
+  // Automated workflow pulse that travels through the pipeline
+  useEffect(() => {
+    if (!isPlayingFlow) return;
+    const timer = setInterval(() => {
+      setFlowStep((prev) => (prev % ARCH_NODES.length) + 1);
+    }, 2800);
+    return () => clearInterval(timer);
+  }, [isPlayingFlow]);
 
   const activeNode: ArchNode =
     ARCH_NODES.find((n) => n.id === activeNodeId) ?? ARCH_NODES[1]!;
-
-  const nodeSources = ARCH_NODES[0]!;
-  const nodeEngine = ARCH_NODES[1]!;
-  const nodeThreat = ARCH_NODES[2]!;
-  const nodeEvidence = ARCH_NODES[3]!;
-  const nodeAi = ARCH_NODES[4]!;
-  const nodeConsole = ARCH_NODES[5]!;
 
   return (
     <section
       id="architecture"
       className="py-16 lg:py-24 border-b border-slate-800/60 bg-[#070b14] relative overflow-hidden"
     >
-      {/* Component-scoped CSS for subtle data flow animations and reduced-motion compliance */}
-      <style>{`
-        @keyframes flowDashForward {
-          from {
-            stroke-dashoffset: 24;
-          }
-          to {
-            stroke-dashoffset: 0;
-          }
-        }
-        @keyframes flowPulseTravel {
-          0% {
-            opacity: 0.15;
-            transform: translateY(-4px);
-          }
-          50% {
-            opacity: 0.9;
-          }
-          100% {
-            opacity: 0.15;
-            transform: translateY(16px);
-          }
-        }
-        .anim-flow-dash {
-          stroke-dasharray: 4 6;
-          animation: flowDashForward 1.6s linear infinite;
-        }
-        .anim-flow-dash-fast {
-          stroke-dasharray: 4 4;
-          animation: flowDashForward 1.2s linear infinite;
-        }
-        .anim-pulse-marker {
-          animation: flowPulseTravel 2.4s ease-in-out infinite;
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .anim-flow-dash,
-          .anim-flow-dash-fast {
-            animation: none !important;
-            stroke-dasharray: none !important;
-          }
-          .anim-pulse-marker {
-            animation: none !important;
-          }
-        }
-      `}</style>
+      {/* Background ambient accents */}
+      <div className="pointer-events-none absolute inset-0 opacity-20">
+        <div className="absolute top-1/3 left-10 size-80 rounded-full bg-cyan-500/25 blur-3xl" />
+        <div className="absolute bottom-1/3 right-10 size-80 rounded-full bg-indigo-500/20 blur-3xl" />
+      </div>
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Section Heading & Subtitle */}
-        <div className="text-center max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/30 bg-cyan-950/30 px-3.5 py-1 text-[11px] font-mono font-semibold text-cyan-300 tracking-wide">
-            <span className="size-1.5 rounded-full bg-cyan-400 animate-pulse" />
-            AIR-GAPPED ARCHITECTURE // NO CLOUD DEPENDENCY
+        <ScrollReveal>
+          <div className="text-center max-w-3xl mx-auto">
+            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/30 bg-cyan-950/30 px-3.5 py-1 text-[11px] font-mono font-semibold text-cyan-300 tracking-wide">
+              <span className="size-1.5 rounded-full bg-cyan-400 animate-pulse" />
+              AIR-GAPPED ARCHITECTURE // NO CLOUD DEPENDENCY
+            </div>
+            <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-white sm:text-4xl font-mono uppercase">
+              ARCHITECTURE // INSIDE THE ENCLAVE
+            </h2>
+            <p className="mt-4 text-sm sm:text-base leading-relaxed text-slate-300">
+              Every stage of investigation runs locally inside the isolated environment.
+              Follow the animated pipeline below: from multi-source ingestion to normalized
+              rule matching, correlation, local persistence, AI narrative, and courtroom-ready reporting.
+            </p>
           </div>
-          <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-white sm:text-4xl font-mono uppercase">
-            ARCHITECTURE // INSIDE THE ENCLAVE
-          </h2>
-          <p className="mt-4 text-sm sm:text-base leading-relaxed text-slate-300">
-            Every stage of investigation runs locally inside the isolated environment.
-            Security evidence, detection results, investigation context, and AI analysis
-            remain within the enclave.
-          </p>
-        </div>
+        </ScrollReveal>
 
-        {/* Visual Egress Disconnect (Internet / Cloud Outside the Enclave) */}
-        <div className="mt-12 max-w-2xl mx-auto flex flex-col items-center">
-          <div className="w-full flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg border border-slate-800/80 bg-[#0b101c]/90 text-slate-400">
-            <div className="flex items-center gap-2">
-              <CloudOff className="size-4 text-slate-500" />
-              <span className="font-mono text-xs text-slate-400 font-semibold tracking-wider uppercase">
-                INTERNET / CLOUD
+        {/* Visual Egress Disconnect */}
+        <ScrollReveal delay={100}>
+          <div className="mt-10 max-w-2xl mx-auto flex flex-col items-center">
+            <div className="w-full flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg border border-slate-800/80 bg-[#0b101c]/90 text-slate-400">
+              <div className="flex items-center gap-2">
+                <CloudOff className="size-4 text-slate-500" />
+                <span className="font-mono text-xs text-slate-400 font-semibold tracking-wider uppercase">
+                  INTERNET / CLOUD
+                </span>
+              </div>
+              <div className="flex items-center gap-2 font-mono text-[11px] text-red-400 bg-red-950/40 px-2 py-0.5 rounded border border-red-500/30">
+                <X className="size-3.5 text-red-400" />
+                <span className="font-bold tracking-wider">EGRESS BLOCKED</span>
+              </div>
+              <span className="hidden sm:inline font-mono text-[10px] text-slate-500">
+                NO APPLICATION-LEVEL CLOUD DEPENDENCIES
               </span>
             </div>
-            <div className="flex items-center gap-2 font-mono text-[11px] text-red-400 bg-red-950/40 px-2 py-0.5 rounded border border-red-500/30">
-              <X className="size-3.5 text-red-400" />
-              <span className="font-bold tracking-wider">EGRESS BLOCKED</span>
+
+            {/* Blocked connector drop line */}
+            <div className="flex flex-col items-center my-1 select-none">
+              <div className="w-px h-3 bg-red-500/40" />
+              <div className="grid size-5 place-items-center rounded-full bg-[#0a0f1d] border border-red-500/60 text-red-400 text-[10px] font-mono font-bold shadow-sm">
+                ✕
+              </div>
+              <div className="w-px h-3 bg-red-500/40" />
             </div>
-            <span className="hidden sm:inline font-mono text-[10px] text-slate-500">
-              NO APPLICATION-LEVEL CLOUD DEPENDENCIES
+
+            <span className="font-mono text-[10px] tracking-wider uppercase text-slate-400 font-semibold mb-1">
+              DESIGNED FOR AIR-GAPPED DEPLOYMENT
             </span>
           </div>
+        </ScrollReveal>
 
-          {/* Blocked connector drop line */}
-          <div className="flex flex-col items-center my-1 select-none">
-            <div className="w-px h-3 bg-red-500/40" />
-            <div className="grid size-5 place-items-center rounded-full bg-[#0a0f1d] border border-red-500/60 text-red-400 text-[10px] font-mono font-bold shadow-sm">
-              ✕
+        {/* Live Workflow Pipeline Control Bar */}
+        <ScrollReveal delay={150}>
+          <div className="mt-6 mb-4 rounded-xl border border-cyan-500/30 bg-[#060b17] p-3 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="font-mono text-xs font-bold text-white flex items-center gap-1.5 uppercase tracking-wider">
+                <Activity className="size-4 text-cyan-400 animate-pulse" />
+                Pipeline Flow Simulation:
+              </span>
+              <span className="hidden sm:inline font-mono text-xs text-cyan-300 font-bold bg-cyan-950/60 border border-cyan-500/40 px-2 py-0.5 rounded">
+                Stage {flowStep} of 6: {ARCH_NODES[flowStep - 1]?.workflowStage}
+              </span>
             </div>
-            <div className="w-px h-3 bg-red-500/40" />
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsPlayingFlow(!isPlayingFlow)}
+                className="flex items-center gap-1.5 rounded border border-slate-700 bg-slate-800/80 px-2.5 py-1 text-[11px] font-mono font-semibold text-slate-300 hover:border-cyan-400 hover:text-white transition-colors cursor-pointer"
+              >
+                {isPlayingFlow ? (
+                  <>
+                    <Pause className="size-3 text-cyan-400" />
+                    <span>Pause Flow</span>
+                  </>
+                ) : (
+                  <>
+                    <Play className="size-3 text-cyan-400" />
+                    <span>Resume Flow</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                onClick={() => {
+                  setFlowStep(1);
+                  setActiveNodeId("sources");
+                }}
+                className="flex items-center gap-1 rounded border border-slate-700 bg-slate-800/80 px-2 py-1 text-[11px] font-mono font-semibold text-slate-300 hover:text-white transition-colors cursor-pointer"
+                title="Restart flow"
+              >
+                <RotateCcw className="size-3" />
+              </button>
+            </div>
           </div>
+        </ScrollReveal>
 
-          <span className="font-mono text-[10px] tracking-wider uppercase text-slate-400 font-semibold mb-1">
-            DESIGNED FOR AIR-GAPPED DEPLOYMENT
-          </span>
-        </div>
-
-        {/* Main Central Architecture Visualization Container: AIR-GAPPED ENCLAVE */}
+        {/* Enclave Architecture Grid */}
         <div className="rounded-2xl border-2 border-cyan-500/30 bg-[#060b16]/95 shadow-[0_0_50px_rgba(6,182,212,0.06)] relative p-4 sm:p-7 lg:p-9 backdrop-blur-md">
-          {/* Enclave Header Bar */}
+          {/* Header */}
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-cyan-500/20 pb-4 mb-7">
             <div className="flex items-center gap-3">
               <span className="grid size-8 place-items-center rounded-lg bg-cyan-950/80 border border-cyan-500/40 text-cyan-300">
@@ -392,280 +331,139 @@ export function ArchitectureSection() {
                   <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
                 </div>
                 <span className="text-[10px] font-mono text-slate-400 uppercase tracking-widest block">
-                  CLASSIFICATION: LOCAL PROCESSING // STANDALONE NODE
+                  WORKFLOW: INGESTION &rarr; NORMALIZATION &rarr; DETECTION &rarr; CORRELATION &rarr; INVESTIGATION &rarr; REPORTING
                 </span>
               </div>
             </div>
 
             <div className="flex items-center gap-2 font-mono text-[11px]">
-              <span className="rounded bg-emerald-950/60 border border-emerald-500/30 px-2.5 py-1 text-emerald-300 font-semibold flex items-center gap-1.5">
-                <CheckCircle2 className="size-3 text-emerald-400" />
-                ISOLATED VOLUMES
+              <span className="rounded bg-slate-900 border border-slate-800 px-2 py-1 text-slate-400">
+                Host: <strong className="text-white">ENCLAVE-SRV-01</strong>
               </span>
-              <span className="hidden sm:inline rounded bg-slate-900 border border-slate-800 px-2.5 py-1 text-slate-400">
-                OFFLINE INTELLIGENCE
+              <span className="rounded bg-emerald-950/80 border border-emerald-500/40 px-2 py-1 text-emerald-300 font-bold">
+                100% AIR-GAP VERIFIED
               </span>
             </div>
           </div>
 
-          {/* ========================================================
-              DIAGRAM FLOW GRAPH (DESKTOP & RESPONSIVE VIEW)
-             ======================================================== */}
-          <div className="flex flex-col items-center">
-            {/* LEVEL 1: NODE 01 - SECURITY SOURCES */}
-            <div className="w-full max-w-3xl">
-              <NodeCard
-                node={nodeSources}
-                isActive={activeNodeId === "sources"}
-                onSelect={() => setActiveNodeId("sources")}
-                iconClass="text-emerald-400"
-                activeBorderClass="border-emerald-400 bg-emerald-950/30 shadow-[0_0_20px_rgba(52,211,153,0.2)] ring-1 ring-emerald-500/30"
-                focusRingClass="focus-visible:ring-emerald-400"
-              />
-            </div>
+          {/* 6 Architecture Nodes Grid */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {ARCH_NODES.map((node, idx) => {
+              const NodeIcon = node.icon;
+              const isSelected = activeNodeId === node.id;
+              const isCurrentInFlow = flowStep === idx + 1;
 
-            {/* FLOW CONNECTOR 1: SOURCES -> ENGINE */}
-            <div className="flex flex-col items-center my-1 sm:my-2 w-full max-w-3xl">
-              <svg className="w-full h-8 sm:h-10 overflow-visible" viewBox="0 0 400 36">
-                <line
-                  x1="200"
-                  y1="0"
-                  x2="200"
-                  y2="36"
-                  stroke="#0891b2"
-                  strokeWidth="2"
-                  className="anim-flow-dash"
-                />
-                <circle cx="200" cy="18" r="3" fill="#22d3ee" className="anim-pulse-marker" />
-              </svg>
-              <span className="font-mono text-[9px] text-cyan-400 tracking-wider bg-[#060b16] px-2 py-0.5 rounded border border-cyan-500/20 -mt-2 z-10">
-                RAW SECURITY LOGS (UNIDIRECTIONAL INGESTION)
-              </span>
-            </div>
+              return (
+                <div
+                  key={node.id}
+                  onClick={() => {
+                    setActiveNodeId(node.id);
+                    setFlowStep(idx + 1);
+                  }}
+                  className={`group relative rounded-xl border p-5 transition-all duration-300 cursor-pointer text-left ${
+                    isSelected
+                      ? "border-cyan-400 bg-cyan-950/40 shadow-[0_0_25px_rgba(6,182,212,0.25)] ring-1 ring-cyan-400/50"
+                      : "border-slate-800 bg-[#090f1e] hover:border-slate-700 hover:bg-[#0c1426] hover:-translate-y-0.5"
+                  }`}
+                >
+                  {/* Flow Pulse Indicator Beam */}
+                  {isCurrentInFlow && (
+                    <div className="absolute top-2 right-2 flex items-center gap-1.5 rounded-full bg-cyan-500/20 border border-cyan-400/60 px-2 py-0.5 font-mono text-[9px] font-bold text-cyan-300 animate-pulse">
+                      <Zap className="size-2.5 text-cyan-400" />
+                      <span>DATA PACKET ACTIVE</span>
+                    </div>
+                  )}
 
-            {/* LEVEL 2: NODE 02 - ASEIOS-SOC PROCESSING ENGINE */}
-            <div className="w-full max-w-xl">
-              <NodeCard
-                node={nodeEngine}
-                isActive={activeNodeId === "engine"}
-                onSelect={() => setActiveNodeId("engine")}
-                iconClass="text-cyan-400"
-                activeBorderClass="border-cyan-400 bg-cyan-950/30 shadow-[0_0_20px_rgba(6,182,212,0.2)] ring-1 ring-cyan-500/30"
-                focusRingClass="focus-visible:ring-cyan-400"
-              />
-            </div>
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-[10px] font-bold text-cyan-400 bg-cyan-950/90 border border-cyan-500/40 px-2 py-0.5 rounded">
+                        STAGE {node.step}
+                      </span>
+                      <NodeIcon className={`size-4 ${isSelected ? "text-cyan-300" : "text-cyan-400"}`} />
+                    </div>
+                    {getStatusBadge(node.statusType, node.status)}
+                  </div>
 
-            {/* FLOW CONNECTOR 2: ENGINE -> SPLIT (LOCAL EVIDENCE & THREAT ANALYSIS) */}
-            <div className="hidden sm:block w-full max-w-3xl my-2">
-              <svg className="w-full h-12 overflow-visible" viewBox="0 0 600 48">
-                {/* Trunk */}
-                <line
-                  x1="300"
-                  y1="0"
-                  x2="300"
-                  y2="16"
-                  stroke="#0891b2"
-                  strokeWidth="2"
-                  className="anim-flow-dash"
-                />
-                {/* Horizontal branch line */}
-                <path
-                  d="M150 48 L150 24 L450 24 L450 48"
-                  fill="none"
-                  stroke="#0891b2"
-                  strokeWidth="2"
-                  className="anim-flow-dash"
-                />
-                <circle cx="150" cy="36" r="3" fill="#38bdf8" className="anim-pulse-marker" />
-                <circle cx="450" cy="36" r="3" fill="#fbbf24" className="anim-pulse-marker" />
-              </svg>
-            </div>
+                  <div className="font-mono text-xs uppercase font-extrabold text-cyan-400 tracking-wider">
+                    {node.workflowStage}
+                  </div>
+                  <h3 className="font-bold text-sm text-white mt-1 group-hover:text-cyan-200 transition-colors">
+                    {node.name}
+                  </h3>
+                  <div className="text-[11px] font-mono text-slate-400 mt-0.5">
+                    {node.subtitle}
+                  </div>
 
-            {/* Mobile Vertical Indicator (sm:hidden) */}
-            <div className="sm:hidden flex flex-col items-center my-2">
-              <ArrowDown className="size-4 text-cyan-400 animate-bounce" />
-              <span className="font-mono text-[9px] text-cyan-400 tracking-wider">
-                NORMALIZED EVENT STREAM
-              </span>
-            </div>
+                  <p className="mt-3 text-xs text-slate-300 leading-relaxed">
+                    {node.summary}
+                  </p>
 
-            {/* LEVEL 3: PARALLEL SPLIT - LOCAL EVIDENCE (04) & THREAT ANALYSIS (03) */}
-            <div className="w-full max-w-4xl grid gap-4 sm:grid-cols-2">
-              {/* NODE 04: LOCAL EVIDENCE (PostgreSQL 16) */}
-              <NodeCard
-                node={nodeEvidence}
-                isActive={activeNodeId === "evidence"}
-                onSelect={() => setActiveNodeId("evidence")}
-                iconClass="text-blue-400"
-                activeBorderClass="border-blue-400 bg-blue-950/30 shadow-[0_0_20px_rgba(59,130,246,0.2)] ring-1 ring-blue-500/30"
-                focusRingClass="focus-visible:ring-blue-400"
-              />
+                  {node.sources && (
+                    <div className="grid grid-cols-3 sm:grid-cols-5 gap-1 pt-3 mt-3 border-t border-slate-800">
+                      {node.sources.map((src) => (
+                        <div
+                          key={src}
+                          className="rounded bg-slate-950/80 border border-slate-800 px-1 py-0.5 text-center font-mono text-[9px] text-slate-300"
+                        >
+                          {src}
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
-              {/* NODE 03: THREAT ANALYSIS (Rules · IOC · MITRE ATT&CK) */}
-              <NodeCard
-                node={nodeThreat}
-                isActive={activeNodeId === "threat"}
-                onSelect={() => setActiveNodeId("threat")}
-                iconClass="text-amber-400"
-                activeBorderClass="border-amber-400 bg-amber-950/30 shadow-[0_0_20px_rgba(245,158,11,0.2)] ring-1 ring-amber-500/30"
-                focusRingClass="focus-visible:ring-amber-400"
-              />
-            </div>
-
-            {/* FLOW CONNECTOR 3: CONVERGE INTO LOCAL AI */}
-            <div className="hidden sm:block w-full max-w-3xl my-2">
-              <svg className="w-full h-12 overflow-visible" viewBox="0 0 600 48">
-                {/* Converging lines */}
-                <path
-                  d="M150 0 L150 24 L300 24 L300 48"
-                  fill="none"
-                  stroke="#0891b2"
-                  strokeWidth="2"
-                  className="anim-flow-dash"
-                />
-                <path
-                  d="M450 0 L450 24 L300 24"
-                  fill="none"
-                  stroke="#0891b2"
-                  strokeWidth="2"
-                  className="anim-flow-dash"
-                />
-                <circle cx="300" cy="36" r="3" fill="#c084fc" className="anim-pulse-marker" />
-              </svg>
-            </div>
-
-            {/* Mobile Vertical Indicator (sm:hidden) */}
-            <div className="sm:hidden flex flex-col items-center my-2">
-              <ArrowDown className="size-4 text-cyan-400 animate-bounce" />
-              <span className="font-mono text-[9px] text-cyan-400 tracking-wider">
-                EVIDENCE CONVERGENCE
-              </span>
-            </div>
-
-            {/* LEVEL 4: NODE 05 - LOCAL AI / OLLAMA */}
-            <div className="w-full max-w-xl">
-              <NodeCard
-                node={nodeAi}
-                isActive={activeNodeId === "ai"}
-                onSelect={() => setActiveNodeId("ai")}
-                iconClass="text-purple-300"
-                activeBorderClass="border-purple-400 bg-purple-950/30 shadow-[0_0_20px_rgba(192,132,252,0.2)] ring-1 ring-purple-500/30"
-                focusRingClass="focus-visible:ring-purple-400"
-              />
-            </div>
-
-            {/* FLOW CONNECTOR 4: LOCAL AI -> ANALYST CONSOLE */}
-            <div className="flex flex-col items-center my-1 sm:my-2 w-full max-w-3xl">
-              <svg className="w-full h-8 sm:h-10 overflow-visible" viewBox="0 0 400 36">
-                <line
-                  x1="200"
-                  y1="0"
-                  x2="200"
-                  y2="36"
-                  stroke="#0891b2"
-                  strokeWidth="2"
-                  className="anim-flow-dash-fast"
-                />
-                <circle cx="200" cy="18" r="3" fill="#34d399" className="anim-pulse-marker" />
-              </svg>
-              <span className="font-mono text-[9px] text-emerald-400 tracking-wider bg-[#060b16] px-2 py-0.5 rounded border border-emerald-500/20 -mt-2 z-10">
-                FORENSIC CONTEXT & AI TRIAGE SYNTHESIS
-              </span>
-            </div>
-
-            {/* LEVEL 5: NODE 06 - ANALYST CONSOLE */}
-            <div className="w-full max-w-xl">
-              <NodeCard
-                node={nodeConsole}
-                isActive={activeNodeId === "console"}
-                onSelect={() => setActiveNodeId("console")}
-                iconClass="text-emerald-400"
-                activeBorderClass="border-emerald-400 bg-emerald-950/30 shadow-[0_0_20px_rgba(52,211,153,0.2)] ring-1 ring-emerald-500/30"
-                focusRingClass="focus-visible:ring-emerald-400"
-              />
-            </div>
-          </div>
-
-          {/* ========================================================
-              ACTIVE CONTEXT INSPECTOR PANEL
-             ======================================================== */}
-          <div className="mt-8 rounded-xl border border-cyan-500/40 bg-[#040813] p-4 sm:p-6 relative overflow-hidden shadow-inner">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800/80 pb-3 mb-4">
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-[10px] uppercase font-bold tracking-widest text-cyan-400 bg-cyan-950/70 px-2 py-0.5 rounded border border-cyan-500/30">
-                  NODE INSPECTOR
-                </span>
-                <span className="text-xs font-mono text-white font-bold">
-                  STAGE {activeNode.step} // {activeNode.name}
-                </span>
-              </div>
-              <span className="text-[10px] font-mono text-slate-400">
-                Hover or select any node above to inspect its isolated enclave function
-              </span>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="md:col-span-2 space-y-2">
-                <div className="text-[11px] font-mono uppercase tracking-wider text-slate-400">
-                  ENCLAVE FUNCTION
+                  {node.capabilities && (
+                    <div className="flex flex-wrap gap-1 pt-3 mt-3 border-t border-slate-800">
+                      {node.capabilities.map((cap) => (
+                        <span
+                          key={cap}
+                          className="rounded bg-slate-950/80 border border-slate-800 px-1.5 py-0.5 font-mono text-[9px] text-slate-300"
+                        >
+                          {cap}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <p className="text-xs sm:text-sm text-slate-200 leading-relaxed">
+              );
+            })}
+          </div>
+
+          {/* Active Node Deep-Dive Inspection Pane */}
+          <div className="mt-8 rounded-xl border border-cyan-500/30 bg-[#090f1f] p-5 lg:p-6 transition-all duration-300">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3 mb-4">
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-xs font-bold text-cyan-400 bg-cyan-950 border border-cyan-500/40 px-2 py-0.5 rounded">
+                  INSPECTING NODE {activeNode.step}
+                </span>
+                <h4 className="text-sm sm:text-base font-bold text-white font-mono">
+                  {activeNode.name} // {activeNode.workflowStage}
+                </h4>
+              </div>
+              <span className="font-mono text-xs text-slate-400">
+                Tech Stack: <strong className="text-cyan-300">{activeNode.techStack}</strong>
+              </span>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 text-xs">
+              <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-3.5">
+                <div className="font-mono text-[10px] uppercase font-bold text-slate-400 mb-1">
+                  Enclave Operational Role
+                </div>
+                <p className="text-slate-300 leading-relaxed font-sans">
                   {activeNode.enclaveRole}
                 </p>
-                <div className="pt-2 text-[11px] font-mono text-slate-400">
-                  <span className="text-cyan-400 font-semibold">RUNTIME STACK: </span>
-                  {activeNode.techStack}
-                </div>
               </div>
 
-              <div className="rounded-lg border border-slate-800 bg-[#070d1a] p-3 text-xs flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center gap-1.5 text-emerald-400 font-mono text-[11px] font-bold mb-1">
-                    <CheckCircle2 className="size-3.5" />
-                    <span>SOVEREIGNTY STATUS</span>
-                  </div>
-                  <p className="text-[11px] text-slate-300 leading-relaxed">
-                    {activeNode.sovereigntyGuarantee}
-                  </p>
+              <div className="rounded-lg border border-emerald-500/30 bg-emerald-950/20 p-3.5">
+                <div className="font-mono text-[10px] uppercase font-bold text-emerald-400 mb-1 flex items-center gap-1.5">
+                  <CheckCircle2 className="size-3 text-emerald-400" />
+                  Sovereignty &amp; Air-Gap Guarantee
                 </div>
-                <div className="mt-3 pt-2 border-t border-slate-800 text-[10px] font-mono text-slate-400">
-                  Egress Status: <span className="text-emerald-400">ZERO NETWORK EMISSION</span>
-                </div>
+                <p className="text-slate-200 leading-relaxed font-sans">
+                  {activeNode.sovereigntyGuarantee}
+                </p>
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* ========================================================
-            BOTTOM PROOF POINTS
-            Replacing large cards with 3 compact proof points
-           ======================================================== */}
-        <div className="mt-10 grid gap-4 sm:grid-cols-3">
-          <div className="rounded-xl border border-slate-800/80 bg-[#080d19] p-5 text-xs transition-colors hover:border-slate-700">
-            <span className="font-mono text-[10px] uppercase font-bold text-cyan-400 block mb-1.5">
-              01 — LOCAL PROCESSING
-            </span>
-            <p className="text-slate-300 leading-relaxed text-xs">
-              Security logs and investigation data are processed within the deployment environment.
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-slate-800/80 bg-[#080d19] p-5 text-xs transition-colors hover:border-slate-700">
-            <span className="font-mono text-[10px] uppercase font-bold text-cyan-400 block mb-1.5">
-              02 — LOCAL AI
-            </span>
-            <p className="text-slate-300 leading-relaxed text-xs">
-              Optional Ollama inference keeps AI-assisted investigation inside the enclave.
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-slate-800/80 bg-[#080d19] p-5 text-xs transition-colors hover:border-slate-700">
-            <span className="font-mono text-[10px] uppercase font-bold text-cyan-400 block mb-1.5">
-              03 — LOCAL EVIDENCE
-            </span>
-            <p className="text-slate-300 leading-relaxed text-xs">
-              Cases, normalized events and investigation artifacts remain in local storage.
-            </p>
           </div>
         </div>
       </div>

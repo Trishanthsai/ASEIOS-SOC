@@ -94,9 +94,13 @@ public final class ParserSupport {
      */
     public static String keyValue(String line, String key) {
         java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(
-                "(?i)\\b" + java.util.regex.Pattern.quote(key) + "\\s*[=:]\\s*\"?([^\",;\\s]+)\"?");
+                "(?i)\\b" + java.util.regex.Pattern.quote(key) + "\\s*[=:]\\s*(?:\"([^\"]*)\"|([^\"\\s,;]+))");
         Matcher matcher = pattern.matcher(line);
-        return matcher.find() ? matcher.group(1).trim() : null;
+        if (matcher.find()) {
+            String val = matcher.group(1) != null ? matcher.group(1) : matcher.group(2);
+            return val != null ? val.trim() : null;
+        }
+        return null;
     }
 
     /**

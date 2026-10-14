@@ -3,9 +3,9 @@ spring:
     name: syntrace-ai
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/syntrace
-    username: postgres
-    password: user123
+    url: ${SYNTRACE_DB_URL:jdbc:postgresql://localhost:5432/syntrace}
+    username: ${SYNTRACE_DB_USER:postgres}
+    password: ${SYNTRACE_DB_PASSWORD:user123}
     hikari:
       pool-name: syntrace-pool
       maximum-pool-size: 20
@@ -58,7 +58,7 @@ syntrace:
       access-token-validity-minutes: ${SYNTRACE_JWT_ACCESS_MINUTES:30}
       refresh-token-validity-days: ${SYNTRACE_JWT_REFRESH_DAYS:7}
     cors:
-      allowed-origins: ${SYNTRACE_CORS_ORIGINS:http://localhost:5173,http://localhost:3000,http://localhost:8080}
+      allowed-origins: ${SYNTRACE_CORS_ORIGINS:http://localhost:5173,http://localhost:3000,http://localhost:8080,http://localhost:8081}
   storage:
     # Air-gapped deployments keep raw evidence on local disk only.
     root: ${SYNTRACE_STORAGE_ROOT:./data/uploads}

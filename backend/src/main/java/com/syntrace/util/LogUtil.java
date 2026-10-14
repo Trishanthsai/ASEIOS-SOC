@@ -27,7 +27,7 @@ public final class LogUtil {
      */
     public static String sanitize(String value) {
         if (value == null) {
-            return "";
+            return null;
         }
         String cleaned = CONTROL_CHARS.matcher(value.replace('\n', ' ').replace('\r', ' ')).replaceAll("");
         return WHITESPACE_RUN.matcher(cleaned).replaceAll(" ").trim();
@@ -80,7 +80,10 @@ public final class LogUtil {
      * @return lower-cased, trimmed identifier or {@code "unknown"}
      */
     public static String normalizeIdentifier(String value) {
-        return isBlank(value) ? "unknown" : value.trim().toLowerCase(Locale.ROOT);
+        if (value == null) {
+            return null;
+        }
+        return value.isBlank() ? "unknown" : value.trim().toLowerCase(Locale.ROOT);
     }
 
     /**

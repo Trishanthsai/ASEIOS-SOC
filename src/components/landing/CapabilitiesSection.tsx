@@ -9,6 +9,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
+import { ScrollReveal } from "@/components/ui/ScrollReveal";
 
 export function CapabilitiesSection() {
   const capabilities = [
@@ -25,6 +26,7 @@ export function CapabilitiesSection() {
       ],
       tag: "Rule-Based",
       color: "text-rose-400 border-rose-500/30 bg-rose-950/20",
+      hoverBorder: "hover:border-rose-500/50 hover:shadow-rose-950/20",
     },
     {
       icon: GitBranch,
@@ -39,6 +41,7 @@ export function CapabilitiesSection() {
       ],
       tag: "Temporal Clustering",
       color: "text-cyan-400 border-cyan-500/30 bg-cyan-950/20",
+      hoverBorder: "hover:border-cyan-500/50 hover:shadow-cyan-950/20",
     },
     {
       icon: History,
@@ -53,6 +56,7 @@ export function CapabilitiesSection() {
       ],
       tag: "Forensic Timeline",
       color: "text-amber-400 border-amber-500/30 bg-amber-950/20",
+      hoverBorder: "hover:border-amber-500/50 hover:shadow-amber-950/20",
     },
     {
       icon: Target,
@@ -67,6 +71,7 @@ export function CapabilitiesSection() {
       ],
       tag: "Artifact Extraction",
       color: "text-emerald-400 border-emerald-500/30 bg-emerald-950/20",
+      hoverBorder: "hover:border-emerald-500/50 hover:shadow-emerald-950/20",
     },
     {
       icon: Grid,
@@ -81,6 +86,7 @@ export function CapabilitiesSection() {
       ],
       tag: "ATT&CK Framework",
       color: "text-indigo-400 border-indigo-500/30 bg-indigo-950/20",
+      hoverBorder: "hover:border-indigo-500/50 hover:shadow-indigo-950/20",
     },
     {
       icon: Bot,
@@ -95,66 +101,83 @@ export function CapabilitiesSection() {
       ],
       tag: "Local LLM // Zero Cloud",
       color: "text-purple-400 border-purple-500/30 bg-purple-950/20",
+      hoverBorder: "hover:border-purple-500/50 hover:shadow-purple-950/20",
     },
   ];
 
   return (
-    <section id="capabilities" className="py-16 lg:py-24 border-b border-slate-800/60 bg-[#070b14]">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-950/20 px-3 py-1 text-[11px] font-mono font-semibold text-indigo-300">
-            AIR-GAP CAPABILITIES
+    <section id="capabilities" className="relative py-20 lg:py-28 border-b border-slate-800/80 bg-[#060a14] overflow-hidden">
+      {/* Background ambient lighting */}
+      <div className="pointer-events-none absolute inset-0 opacity-15">
+        <div className="absolute top-1/4 right-1/4 size-96 rounded-full bg-indigo-600/20 blur-3xl" />
+        <div className="absolute bottom-1/4 left-1/4 size-96 rounded-full bg-cyan-600/20 blur-3xl" />
+      </div>
+
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <ScrollReveal direction="up" threshold={0.1}>
+          <div className="text-center max-w-3xl mx-auto">
+            <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/40 bg-indigo-950/30 px-3.5 py-1 text-[11px] font-mono font-semibold text-indigo-300">
+              <span className="size-1.5 rounded-full bg-indigo-400 animate-pulse" />
+              AIR-GAP CAPABILITIES
+            </div>
+            <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+              Engineered for High-Security Environments
+            </h2>
+            <p className="mt-4 text-sm sm:text-base leading-relaxed text-slate-400">
+              ASEIOS-SOC combines deterministic threat analytics with local generative AI to convert
+              millions of raw air-gap events into clear, forensic-grade incident investigations.
+            </p>
           </div>
-          <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
-            Engineered for High-Security Environments
-          </h2>
-          <p className="mt-4 text-sm sm:text-base leading-relaxed text-slate-400">
-            ASEIOS-SOC combines deterministic threat analytics with local generative AI to convert
-            millions of raw air-gap events into clear, forensic-grade incident investigations.
-          </p>
-        </div>
+        </ScrollReveal>
 
         {/* 6 Capabilities Cards Grid */}
-        <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-14 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {capabilities.map((c, i) => (
-            <div
-              key={i}
-              className="flex flex-col justify-between rounded-xl border border-slate-800 bg-[#090e1a] p-6 hover:border-slate-700 transition-all hover:-translate-y-0.5 shadow-sm"
-            >
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <div className={`grid size-10 place-items-center rounded-lg border ${c.color}`}>
-                    <c.icon className="size-5" />
-                  </div>
-                  <span className="font-mono text-[10px] uppercase font-bold text-slate-500 border border-slate-800 bg-slate-900/80 px-2 py-0.5 rounded">
-                    {c.tag}
-                  </span>
-                </div>
-
-                <h3 className="text-base font-extrabold text-white">{c.title}</h3>
-                <div className="text-xs font-mono font-bold text-cyan-400 mt-0.5">{c.subtitle}</div>
-                <p className="mt-2.5 text-xs text-slate-400 leading-relaxed">{c.desc}</p>
-
-                <div className="mt-4 space-y-1.5 border-t border-slate-800/80 pt-3">
-                  {c.features.map((feat, idx) => (
-                    <div key={idx} className="flex items-start gap-2 text-xs text-slate-300">
-                      <CheckCircle2 className="size-3.5 text-emerald-400 shrink-0 mt-0.5" />
-                      <span className="leading-snug text-[11px]">{feat}</span>
+            <ScrollReveal key={i} direction="up" delay={i * 100} threshold={0.1}>
+              <div
+                className={`group h-full flex flex-col justify-between rounded-xl border border-slate-800/90 bg-[#090f20] p-6 transition-all duration-300 hover:bg-[#0c142a] hover:shadow-xl hover:-translate-y-1 ${c.hoverBorder}`}
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-5">
+                    <div
+                      className={`grid size-11 place-items-center rounded-lg border ${c.color} shadow-xs transition-transform duration-300 group-hover:scale-110`}
+                    >
+                      <c.icon className="size-5" />
                     </div>
-                  ))}
+                    <span className="font-mono text-[10px] uppercase font-bold text-slate-500 border border-slate-800 bg-slate-900/80 px-2.5 py-1 rounded">
+                      {c.tag}
+                    </span>
+                  </div>
+
+                  <h3 className="text-base font-extrabold text-white group-hover:text-cyan-300 transition-colors">
+                    {c.title}
+                  </h3>
+                  <div className="text-xs font-mono font-bold text-cyan-400 mt-0.5">{c.subtitle}</div>
+                  <p className="mt-3 text-xs text-slate-400 leading-relaxed group-hover:text-slate-300 transition-colors">
+                    {c.desc}
+                  </p>
+
+                  <div className="mt-5 space-y-2 border-t border-slate-800/80 pt-4">
+                    {c.features.map((feat, idx) => (
+                      <div key={idx} className="flex items-start gap-2 text-xs text-slate-300 font-sans">
+                        <CheckCircle2 className="size-3.5 text-cyan-400 shrink-0 mt-0.5" />
+                        <span className="line-clamp-1">{feat}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-6 pt-4 border-t border-slate-800/80">
+                  <Link
+                    to="/console"
+                    className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-slate-400 group-hover:text-cyan-300 transition-colors"
+                  >
+                    <span>Inspect In Console</span>
+                    <ArrowRight className="size-3 transition-transform group-hover:translate-x-1" />
+                  </Link>
                 </div>
               </div>
-
-              <div className="mt-6 pt-3 border-t border-slate-800/60">
-                <Link
-                  to="/console"
-                  className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold text-cyan-400 hover:text-cyan-300 transition-colors"
-                >
-                  <span>Test in console</span>
-                  <ArrowRight className="size-3" />
-                </Link>
-              </div>
-            </div>
+            </ScrollReveal>
           ))}
         </div>
       </div>

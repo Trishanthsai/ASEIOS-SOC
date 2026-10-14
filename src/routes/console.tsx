@@ -4,26 +4,49 @@ import {
   Activity,
   AlertTriangle,
   ArrowLeft,
+  Award,
   BookOpen,
+  Calculator,
+  CheckCircle2,
   ChevronDown,
   ChevronUp,
+  Cpu,
+  Crosshair,
   Database,
+  DollarSign,
   Download,
   FileCode,
   FileText,
+  Flame,
   HardDrive,
   Layers,
+  Lock,
   Pause,
   Play,
+  QrCode,
+  Radar,
+  Radio,
   RefreshCw,
   Search,
   Send,
   Server,
+  ShieldAlert,
+  ShieldCheck,
   Sparkles,
+  Target,
   Terminal,
   TrendingUp,
+  UploadCloud,
   User,
+  X,
+  Zap,
 } from "lucide-react";
+
+import { TacticalContainmentModal } from "@/components/TacticalContainmentModal";
+import { AttackSimulatorModal } from "@/components/AttackSimulatorModal";
+import { DeceptionCanaryGrid } from "@/components/DeceptionCanaryGrid";
+import { CommercialRoiCalculator } from "@/components/CommercialRoiCalculator";
+import { OpticalDataDiodeModal } from "@/components/OpticalDataDiodeModal";
 
 import { SAMPLE_RAW_LOGS } from "@/data/sampleLogs";
 import {
@@ -36,10 +59,10 @@ import {
 export const Route = createFileRoute("/console")({
   head: () => ({
     meta: [
-      { title: "ASEIOS-SOC — Analyst Console" },
+      { title: "ASEIOSSOC" },
       {
         name: "description",
-        content: "Offline Security Operations Center Analyst Console.",
+        content: "Offline Security Operations Center.",
       },
     ],
   }),
@@ -80,10 +103,16 @@ export function Dashboard() {
   const [autoScroll, setAutoScroll] = useState(true);
   const terminalEndRef = useRef<HTMLDivElement>(null);
 
+  // Injected / Simulated Logs from Attack Simulator & Canaries
+  const [injectedLogs, setInjectedLogs] = useState<string[]>([]);
+  const [isContained, setIsContained] = useState(false);
+
   // Active processed raw log string
   const activeRawLogs = useMemo(() => {
-    return sampleLogLines.slice(0, streamIndex).join("\n");
-  }, [sampleLogLines, streamIndex]);
+    const base = sampleLogLines.slice(0, streamIndex);
+    const combined = [...base, ...injectedLogs];
+    return combined.join("\n");
+  }, [sampleLogLines, streamIndex, injectedLogs]);
 
   // Main correlation engine run
   const analyzed = useMemo<Investigation>(() => {
@@ -91,15 +120,27 @@ export function Dashboard() {
   }, [activeRawLogs]);
 
   // UI Tabs & Notes State
-  type BottomTab = "evidence" | "iocs" | "devices" | "users" | "notes" | "history" | "reports";
-  type ReportType = "executive" | "technical" | "containment" | "recovery";
+  const [activeBottomTab, setActiveBottomTab] = useState<
+    | "evidence"
+    | "iocs"
+    | "devices"
+    | "users"
+    | "notes"
+    | "forensics"
+    | "signatures"
+    | "reports"
+    | "containment"
+    | "simulator"
+    | "canaries"
+    | "roi"
+    | "diode"
+  >("evidence");
 
-  const [activeBottomTab, setActiveBottomTab] = useState<BottomTab>("evidence");
   const [analystNotes, setAnalystNotes] = useState(() => {
     if (typeof window !== "undefined") {
       return (
         localStorage.getItem("aesios_analyst_notes") ??
-        `// AESIOS SOC - Analyst Notes\n// Case ID: AES-2026-8941\n// Host: WIN-HOST-DRDO-14\n\n- Removable media mounted.\n- Encoded PowerShell command executed.\n- Unauthorized file access occurred on NPCIL fileserver.`
+        `// ASEIOSSOC - Analyst Notes\n// Case ID: AES-2026-8941\n// Enclave: DRDO-ENCLAVE-04\n\n- Removable media mounted.\n- Encoded PowerShell command executed.\n- Unauthorized file access occurred on NPCIL fileserver.`
       );
     }
     return "";
@@ -109,6 +150,147 @@ export function Dashboard() {
   useEffect(() => {
     localStorage.setItem("aesios_analyst_notes", analystNotes);
   }, [analystNotes]);
+
+  // Modals state
+  const [showSignatureModal, setShowSignatureModal] = useState(false);
+  const [showForensicModal, setShowForensicModal] = useState(false);
+  const [showHardwareModal, setShowHardwareModal] = useState(false);
+  const [showContainmentModal, setShowContainmentModal] = useState(false);
+  const [showSimulatorModal, setShowSimulatorModal] = useState(false);
+  const [showCanaryModal, setShowCanaryModal] = useState(false);
+  const [showRoiModal, setShowRoiModal] = useState(false);
+  const [showDiodeModal, setShowDiodeModal] = useState(false);
+  const [hardwareProfile, setHardwareProfile] = useState<
+    "ULTRA_LOW_SPEC" | "BALANCED_CPU" | "HIGH_PERFORMANCE_GPU"
+  >("BALANCED_CPU");
+
+  // WebSocket Live Connection State
+  const [wsConnected, setWsConnected] = useState(false);
+  const [liveSirenAlert, setLiveSirenAlert] = useState<{
+    rule: string;
+    host: string;
+    severity: string;
+  } | null>(null);
+
+  // Connect to WebSocket on load
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let ws: WebSocket | null = null;
+    let reconnectTimeout: NodeJS.Timeout | null = null;
+
+    function connectWs() {
+      try {
+        ws = new WebSocket("ws://localhost:8087/ws-soc-raw");
+        ws.onopen = () => {
+          setWsConnected(true);
+        };
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.severity === "CRITICAL" || data.severity === "HIGH") {
+              setLiveSirenAlert({
+                rule: data.ruleName || data.ruleId || "Critical Anomaly Detected",
+                host: data.hostName || "WIN-HOST-DRDO-14",
+                severity: data.severity,
+              });
+            }
+          } catch (ignored) {}
+        };
+        ws.onclose = () => {
+          setWsConnected(false);
+          reconnectTimeout = setTimeout(connectWs, 4000);
+        };
+        ws.onerror = () => {
+          setWsConnected(false);
+        };
+      } catch (e) {
+        setWsConnected(false);
+      }
+    }
+
+    connectWs();
+    return () => {
+      if (ws) ws.close();
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+    };
+  }, []);
+
+  // Offline Signature Pack State
+  const [activePackVersion, setActivePackVersion] = useState("OFFLINE-SIG-2026.Q4");
+  const [signatureList, setSignatureList] = useState([
+    {
+      id: "SYN-R-001",
+      name: "Removable Media Insertion",
+      tactic: "Initial Access",
+      mitre: "T1200",
+      severity: "LOW",
+      enabled: true,
+    },
+    {
+      id: "SYN-R-002",
+      name: "PowerShell Encoded Script Execution",
+      tactic: "Execution",
+      mitre: "T1059.001",
+      severity: "HIGH",
+      enabled: true,
+    },
+    {
+      id: "SYN-R-003",
+      name: "SeDebugPrivilege Token Escalation",
+      tactic: "Privilege Escalation",
+      mitre: "T1134",
+      severity: "CRITICAL",
+      enabled: true,
+    },
+    {
+      id: "SYN-R-004",
+      name: "Bulk File Harvest On Network Share",
+      tactic: "Collection",
+      mitre: "T1039",
+      severity: "HIGH",
+      enabled: true,
+    },
+    {
+      id: "SYN-R-005",
+      name: "Air-Gap Outbound Egress Blocked",
+      tactic: "Exfiltration",
+      mitre: "T1048",
+      severity: "HIGH",
+      enabled: true,
+    },
+    {
+      id: "SYN-R-006",
+      name: "Security Event Log Clear (Event 1102)",
+      tactic: "Defense Evasion",
+      mitre: "T1070.001",
+      severity: "CRITICAL",
+      enabled: true,
+    },
+    {
+      id: "SYN-DYN-101",
+      name: "Ransomware Shadow Copy Deletion (vssadmin)",
+      tactic: "Impact",
+      mitre: "T1490",
+      severity: "CRITICAL",
+      enabled: true,
+    },
+    {
+      id: "SYN-DYN-102",
+      name: "LSASS Memory Dumping (Mimikatz / ProcDump)",
+      tactic: "Credential Access",
+      mitre: "T1003.001",
+      severity: "CRITICAL",
+      enabled: true,
+    },
+    {
+      id: "SYN-DYN-103",
+      name: "Air-Gap Optical/USB Data Staging Archive",
+      tactic: "Collection",
+      mitre: "T1560.001",
+      severity: "HIGH",
+      enabled: true,
+    },
+  ]);
 
   // Timeline expanded nodes
   const [expandedTimelineNodes, setExpandedTimelineNodes] = useState<Record<string, boolean>>({
@@ -192,7 +374,11 @@ export function Dashboard() {
 
   // Trigger Ollama custom summary when logs/incident change
   useEffect(() => {
-    if (ollamaStatus !== "available" || analyzed.detections.length === 0) {
+    if (
+      hardwareProfile === "ULTRA_LOW_SPEC" ||
+      ollamaStatus !== "available" ||
+      analyzed.detections.length === 0
+    ) {
       setOllamaActiveSummary(null);
       return;
     }
@@ -247,20 +433,20 @@ Recommended Actions
       active = false;
       clearTimeout(timer);
     };
-  }, [analyzed.detections, ollamaStatus, ollamaUrl, ollamaModel]);
+  }, [analyzed.detections, ollamaStatus, ollamaUrl, ollamaModel, hardwareProfile]);
 
   // Assistant Chat State
   const [chat, setChat] = useState<ChatTurn[]>([
     {
       role: "ai",
-      text: "Analysis Assistant ready. Input query or select an example below.",
+      text: "Analysis Assistant ready. Input query or select an action below.",
       source: "local",
     },
   ]);
   const [question, setQuestion] = useState("");
   const [askingAi, setAskingAi] = useState(false);
 
-  // Security Assistant query routing and verification
+  // Security Assistant query routing with Token-by-Token Streaming
   async function askAssistant(qText: string) {
     const query = qText.trim();
     if (!query) return;
@@ -284,7 +470,6 @@ Recommended Actions
       "sports",
       "cricket",
       "who is",
-      "weather",
       "president",
       "capital",
       "funny",
@@ -305,13 +490,15 @@ Recommended Actions
       return;
     }
 
-    // Try Local Ollama if available
-    if (ollamaStatus === "available") {
+    // Determine answer text
+    let targetAnswer = "";
+    let source: "ollama" | "local" = "local";
+
+    if (hardwareProfile !== "ULTRA_LOW_SPEC" && ollamaStatus === "available") {
       try {
         const prompt = `You are a Principal SOC Analyst analyzing a security incident on an isolated network.
 Your responses must be grounded strictly in the factual data provided below.
 Do NOT invent or hallucinate hosts, users, IPs, files, or techniques.
-If the user asks something unrelated to this incident (e.g. programming, unrelated history, sports, jokes, general questions), reject it immediately and reply exactly: "This assistant is designed only for the current security investigation. Please ask questions related to the uploaded logs or investigation."
 If the answer is not contained inside the facts, respond exactly: "Not found in the uploaded evidence."
 
 Incident Facts:
@@ -338,52 +525,59 @@ Provide a dense, professional, fact-grounded answer:`;
             stream: false,
           }),
         });
-        if (!res.ok) throw new Error("Ollama call failed");
-        const data = (await res.json()) as { response: string };
-        setChat((prev) => [...prev, { role: "ai", text: data.response.trim(), source: "ollama" }]);
-        setAskingAi(false);
-        return;
+        if (res.ok) {
+          const data = (await res.json()) as { response: string };
+          targetAnswer = data.response.trim();
+          source = "ollama";
+        }
       } catch (e) {
-        // Fallback to local template-based responses if server throws
+        // fallback
       }
     }
 
-    // STRICT BOUNDARY 2: Local Rule-Based Q&A (No-Ollama Fallback)
-    let localAnswer = "";
-    if (/who|user|identity|account/.test(qLower)) {
-      localAnswer = analyzed.affectedUsers.length
-        ? `FACTUAL: The activity occurred under user session ${analyzed.affectedUsers.join(
-            ", ",
-          )} on workstation ${analyzed.affectedHosts.join(", ")}.`
-        : "Not found in the uploaded evidence.";
-    } else if (/device|host|computer|machine|infected|compromised/.test(qLower)) {
-      localAnswer = analyzed.affectedHosts.length
-        ? `FACTUAL: Affected devices: ${analyzed.affectedHosts.join(", ")}.`
-        : "Not found in the uploaded evidence.";
-    } else if (/action|mitigate|containment|remediation|recommend/.test(qLower)) {
-      localAnswer = `FACTUAL: Recommended Actions:
-${analyzed.recommendations.map((r, i) => `• ${r.action} (${r.target})`).join("\n")}`;
-    } else if (/why|level|risk|suspicious/.test(qLower)) {
-      localAnswer = `FACTUAL: Threat Level is at ${analyzed.riskScore}/100. Factors:
-${analyzed.detections.map((d) => `- ${d.title}`).join("\n")}`;
-    } else if (/technique|mitre|tactic/.test(qLower)) {
-      localAnswer = `FACTUAL: Identified MITRE ATT&CK techniques:
-${analyzed.detections.map((d) => `- ${d.tactic}`).join("\n")}`;
-    } else if (/time|when|duration|start|timeline/.test(qLower)) {
-      localAnswer = analyzed.timeline.length
-        ? `FACTUAL: Events span from ${analyzed.timeline[0]?.timeLabel} to ${
-            analyzed.timeline[analyzed.timeline.length - 1]?.timeLabel
-          }.`
-        : "Not found in the uploaded evidence.";
-    } else {
-      localAnswer = `Factual Investigation summary:
-${analyzed.story}
-
-(Generated locally via Built-in Engine)`;
+    if (!targetAnswer) {
+      // Local deterministic response
+      if (/who|user|identity|account/.test(qLower)) {
+        targetAnswer = analyzed.affectedUsers.length
+          ? `FACTUAL: The activity occurred under user session ${analyzed.affectedUsers.join(", ")} on workstation ${analyzed.affectedHosts.join(", ")}.`
+          : "Not found in the uploaded evidence.";
+      } else if (/device|host|computer|machine|infected|compromised/.test(qLower)) {
+        targetAnswer = analyzed.affectedHosts.length
+          ? `FACTUAL: Affected devices: ${analyzed.affectedHosts.join(", ")}.`
+          : "Not found in the uploaded evidence.";
+      } else if (/action|mitigate|containment|remediation|recommend/.test(qLower)) {
+        targetAnswer = `FACTUAL: Recommended Actions:\n${analyzed.recommendations.map((r) => `• ${r.action} (${r.target})`).join("\n")}`;
+      } else if (/why|level|risk|suspicious/.test(qLower)) {
+        targetAnswer = `FACTUAL: Threat Level is at ${analyzed.riskScore}/100. Factors:\n${analyzed.detections.map((d) => `- ${d.title}`).join("\n")}`;
+      } else if (/technique|mitre|tactic/.test(qLower)) {
+        targetAnswer = `FACTUAL: Identified MITRE ATT&CK techniques:\n${analyzed.detections.map((d) => `- ${d.tactic}`).join("\n")}`;
+      } else if (/time|when|duration|start|timeline/.test(qLower)) {
+        targetAnswer = analyzed.timeline.length
+          ? `FACTUAL: Events span from ${analyzed.timeline[0]?.timeLabel} to ${analyzed.timeline[analyzed.timeline.length - 1]?.timeLabel}.`
+          : "Not found in the uploaded evidence.";
+      } else {
+        targetAnswer = `Factual Investigation summary:\n${analyzed.story}\n\n(Generated locally via Built-in Engine)`;
+      }
     }
 
-    setChat((prev) => [...prev, { role: "ai", text: localAnswer, source: "local" }]);
+    // Token-by-token smooth typing animation
+    setChat((prev) => [...prev, { role: "ai", text: "", source }]);
     setAskingAi(false);
+
+    const words = targetAnswer.split(" ");
+    let currentText = "";
+    for (let i = 0; i < words.length; i++) {
+      currentText += (i === 0 ? "" : " ") + words[i];
+      const snapshot = currentText;
+      setChat((prev) => {
+        const next = [...prev];
+        if (next.length > 0) {
+          next[next.length - 1] = { role: "ai", text: snapshot, source };
+        }
+        return next;
+      });
+      await new Promise((r) => setTimeout(r, 18));
+    }
   }
 
   // File Uploader Handler
@@ -400,21 +594,6 @@ ${analyzed.story}
       setStreamingActive(false);
     }
   }
-
-  // Pre-calculated stats
-  const severityCounts = useMemo(() => {
-    const counts: Record<Severity, number> = {
-      critical: 0,
-      high: 0,
-      medium: 0,
-      low: 0,
-      info: 0,
-    };
-    analyzed.detections.forEach((d) => {
-      counts[d.severity] = (counts[d.severity] ?? 0) + 1;
-    });
-    return counts;
-  }, [analyzed.detections]);
 
   // Custom Local Reports Generators
   const [activeReportType, setActiveReportType] = useState<
@@ -462,7 +641,7 @@ ${analyzed.story}
       case "containment":
         return {
           title: "Containment Action Playbook",
-          classification: "CONFIDENTIAL // AESIOS",
+          classification: "CONFIDENTIAL // ASEIOSSOC",
           summary:
             "Pre-approved actions scheduled to contain threat lateral movement and secure boundary integrity.",
           confidence: "98%",
@@ -477,7 +656,7 @@ ${analyzed.story}
       case "recovery":
         return {
           title: "Enclave Recovery Plan",
-          classification: "CONFIDENTIAL // AESIOS",
+          classification: "CONFIDENTIAL // ASEIOSSOC",
           summary:
             "Post-incident recovery actions to rebuild security baseline compliance across endpoints.",
           confidence: "95%",
@@ -520,7 +699,7 @@ ${analyzed.story}
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `AESIOS_SOC_Events_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute("download", `ASEIOSSOC_Events_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -535,7 +714,7 @@ ${analyzed.story}
     link.setAttribute("href", url);
     link.setAttribute(
       "download",
-      `AESIOS_SOC_Report_${activeReportType}_${new Date().toISOString().slice(0, 10)}.json`,
+      `ASEIOSSOC_Report_${activeReportType}_${new Date().toISOString().slice(0, 10)}.json`,
     );
     document.body.appendChild(link);
     link.click();
@@ -551,71 +730,198 @@ ${analyzed.story}
   return (
     <main className="mx-auto min-h-screen max-w-[1700px] bg-[#030712] px-4 py-4 text-slate-200">
       {/* 1. PROFESSIONAL ENTERPRISE HEADER */}
-      <header className="mb-5 flex flex-wrap items-center justify-between gap-4 border border-slate-800 bg-[#0B0F19] px-5 py-3 rounded-md shadow-sm">
+      <header className="mb-4 flex flex-wrap items-center justify-between gap-4 border border-slate-800 bg-[#0B0F19] px-5 py-3 rounded-md shadow-sm">
         <div className="flex items-center gap-3">
           <Link
             to="/"
-            className="flex items-center gap-1.5 text-[11px] font-sans font-semibold text-slate-300 hover:text-white px-2.5 py-1.5 rounded border border-slate-700 bg-slate-850 hover:bg-slate-800 transition-colors shadow-xs"
+            className="flex items-center gap-1.5 text-[11px] font-sans font-semibold text-slate-300 hover:text-white px-2.5 py-1.5 rounded border border-slate-700 bg-slate-800 hover:bg-slate-700 transition-colors shadow-xs"
           >
-            <ArrowLeft className="size-3.5 text-sky-400" />
+            <ArrowLeft className="size-3.5 text-cyan-400" />
             <span>Return to Overview</span>
           </Link>
           <div className="h-6 w-px bg-slate-800 hidden sm:block" />
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-base font-extrabold tracking-tight text-white uppercase font-sans">
-                ASEIOS-SOC
-              </h1>
-              <span className="bg-sky-500/10 text-sky-400 border border-sky-500/30 px-1.5 py-0.5 rounded font-mono text-[9px] uppercase font-bold tracking-wider">
-                Console Active
+            <h1 className="text-base font-extrabold tracking-tight text-white uppercase font-sans flex items-center gap-2">
+              ASEIOS-SOC
+              <span className="bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 text-[9px] px-1.5 py-0.5 rounded font-mono font-bold">
+                Console Active // v2026.Q4
               </span>
-            </div>
+            </h1>
             <p className="text-[10px] text-slate-400 uppercase tracking-widest font-sans">
               Offline Security Operations Center // Analyst Workspace
             </p>
           </div>
         </div>
 
-        {/* Header Details */}
-        <div className="flex flex-wrap items-center gap-4 text-[10px] text-slate-400 font-sans">
-          <div>
-            <span className="text-slate-500">Case ID:</span>{" "}
-            <span className="text-slate-300 font-bold">AES-2026-8941</span>
+        {/* Enterprise Controls & Enclave Badges */}
+        <div className="flex flex-wrap items-center gap-2.5 text-[10px] text-slate-400 font-sans">
+          {/* Real-Time WebSocket Indicator */}
+          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-900 border border-slate-800 rounded">
+            <Radio
+              className={`size-3 ${wsConnected ? "text-green-400 animate-pulse" : "text-amber-400"}`}
+            />
+            <span className="text-[9px] font-bold uppercase font-mono text-slate-300">
+              {wsConnected ? "WS: CONNECTED" : "WS: POLLING"}
+            </span>
           </div>
-          <div>
-            <span className="text-slate-500">Model:</span>{" "}
-            <span className="text-slate-300 uppercase font-bold">{ollamaModel}</span>
-          </div>
-          <div>
-            <span className="text-slate-500">Database:</span>{" "}
-            <span className="text-green-400 font-bold">CONNECTED</span>
-          </div>
-          <div>
-            <span className="text-slate-500">Storage:</span>{" "}
-            <span className="text-slate-300 font-bold">LOCAL</span>
-          </div>
-          <div>
-            <span className="text-slate-500">Egress:</span>{" "}
-            <span className="text-red-400 font-bold">BLOCKED</span>
-          </div>
-          <div>
-            <span className="text-slate-500">Time:</span>{" "}
-            <span className="text-slate-300 font-bold">2026-08-07T20:07:00</span>
-          </div>
+
+          {/* Offline Signature Pack Trigger */}
+          <button
+            onClick={() => setShowSignatureModal(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded text-slate-300 transition-colors cursor-pointer"
+          >
+            <Zap className="size-3 text-amber-400" />
+            <span className="text-[9px] font-bold uppercase font-mono">
+              Signatures: {activePackVersion}
+            </span>
+          </button>
+
+          {/* Hardware Profile Trigger */}
+          <button
+            onClick={() => setShowHardwareModal(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded text-slate-300 transition-colors cursor-pointer"
+          >
+            <Cpu className="size-3 text-sky-400" />
+            <span className="text-[9px] font-bold uppercase font-mono">
+              Profile: {hardwareProfile}
+            </span>
+          </button>
+
+          {/* SOAR Tactical Containment Trigger */}
+          <button
+            onClick={() => setShowContainmentModal(true)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded transition-colors cursor-pointer border ${
+              isContained
+                ? "bg-emerald-950/40 border-emerald-500/60 text-emerald-300"
+                : analyzed.riskScore >= 75
+                  ? "bg-red-600/30 hover:bg-red-600/50 border-red-500 text-red-200 animate-pulse font-bold"
+                  : "bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-300"
+            }`}
+          >
+            <ShieldAlert
+              className={`size-3 ${isContained ? "text-emerald-400" : "text-red-400"}`}
+            />
+            <span className="text-[9px] font-bold uppercase font-mono">
+              {isContained ? "SOAR: Host Quarantined" : "SOAR Killswitch"}
+            </span>
+          </button>
+
+          {/* Attack Simulator Trigger */}
+          <button
+            onClick={() => setShowSimulatorModal(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1 bg-sky-950/30 hover:bg-sky-950/50 border border-sky-500/40 rounded text-sky-300 transition-colors cursor-pointer"
+          >
+            <Target className="size-3 text-sky-400" />
+            <span className="text-[9px] font-bold uppercase font-mono">Attacks (48+)</span>
+          </button>
+
+          {/* Honey-Canaries Trigger */}
+          <button
+            onClick={() => setShowCanaryModal(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-950/30 hover:bg-amber-950/50 border border-amber-500/40 rounded text-amber-300 transition-colors cursor-pointer"
+          >
+            <Radar className="size-3 text-amber-400" />
+            <span className="text-[9px] font-bold uppercase font-mono">Honey-Canaries</span>
+          </button>
+
+          {/* Commercial ROI Trigger */}
+          <button
+            onClick={() => setShowRoiModal(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded text-slate-300 transition-colors cursor-pointer"
+          >
+            <Calculator className="size-3 text-emerald-400" />
+            <span className="text-[9px] font-bold uppercase font-mono">Commercial ROI</span>
+          </button>
+
+          {/* Optical Data Diode Trigger */}
+          <button
+            onClick={() => setShowDiodeModal(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1 bg-purple-950/30 hover:bg-purple-950/50 border border-purple-500/40 rounded text-purple-300 transition-colors cursor-pointer"
+          >
+            <Radio className="size-3 text-purple-400" />
+            <span className="text-[9px] font-bold uppercase font-mono">Optical Diode</span>
+          </button>
+
+          {/* Forensic Evidence Trigger */}
+          <button
+            onClick={() => setShowForensicModal(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-950/20 hover:bg-emerald-950/40 border border-emerald-500/30 rounded text-emerald-300 transition-colors cursor-pointer"
+          >
+            <ShieldCheck className="size-3 text-emerald-400" />
+            <span className="text-[9px] font-bold uppercase font-mono">
+              Chain of Custody: SHA-256
+            </span>
+          </button>
+
           <span className="bg-red-500/10 text-red-400 border border-red-500/30 px-2 py-0.5 rounded font-bold uppercase text-[9px] font-sans">
-            Air-Gapped
+            Air-Gapped Enclave
           </span>
         </div>
       </header>
 
+      {/* REAL-TIME REMEDIATION / CONTAINMENT BANNER */}
+      {isContained && (
+        <div className="mb-4 flex items-center justify-between border-2 border-emerald-500 bg-emerald-950/40 px-5 py-3 rounded-md text-xs text-emerald-200 shadow-lg shadow-emerald-950/50 font-sans">
+          <div className="flex items-center gap-3">
+            <ShieldCheck className="size-5 text-emerald-400 shrink-0" />
+            <div>
+              <div className="font-extrabold uppercase tracking-wider text-emerald-100 flex items-center gap-2">
+                ACTIVE MICRO-CONTAINMENT EXECUTED: WIN-HOST-DRDO-14 QUARANTINED
+                <span className="bg-emerald-500 text-black text-[9px] px-1.5 py-0.5 rounded font-mono font-bold">
+                  MTTR: 412ms
+                </span>
+              </div>
+              <p className="text-[11px] text-emerald-300 mt-0.5">
+                Host isolated via kernel firewall • Malicious PID 4412 terminated • Removable volume
+                E:\ dismounted • Session revoked.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setIsContained(false)}
+            className="px-2.5 py-1 bg-emerald-900/50 hover:bg-emerald-900/70 rounded text-emerald-300 border border-emerald-500/40 text-[9.5px] uppercase font-bold cursor-pointer"
+          >
+            Reset Containment
+          </button>
+        </div>
+      )}
+
+      {/* REAL-TIME CRITICAL INCIDENT PUSH BANNER */}
+      {liveSirenAlert && (
+        <div className="mb-4 flex items-center justify-between border-2 border-red-500 bg-red-950/40 px-5 py-3 rounded-md text-xs text-red-200 shadow-lg shadow-red-950/50 animate-pulse font-sans">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="size-5 text-red-400 shrink-0" />
+            <div>
+              <div className="font-extrabold uppercase tracking-wider text-red-100 flex items-center gap-2">
+                CRITICAL THREAT ALERT: {liveSirenAlert.rule}
+                <span className="bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded font-mono font-bold">
+                  {liveSirenAlert.severity}
+                </span>
+              </div>
+              <p className="text-[11px] text-red-300 mt-0.5">
+                Observed on target workstation{" "}
+                <strong className="text-white font-mono">{liveSirenAlert.host}</strong>. Telemetry
+                stream locked.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setLiveSirenAlert(null)}
+            className="p-1 hover:bg-red-900/40 rounded text-red-300 cursor-pointer"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+      )}
+
       {/* FAIL-SAFE WARNING IF OLLAMA IS DOWN */}
-      {ollamaStatus === "unavailable" && (
-        <div className="mb-5 flex items-center justify-between border border-yellow-855 bg-yellow-950/10 px-5 py-2.5 rounded-md text-[11px] text-yellow-300 shadow-sm animate-pulse font-sans">
+      {ollamaStatus === "unavailable" && hardwareProfile !== "ULTRA_LOW_SPEC" && (
+        <div className="mb-4 flex items-center justify-between border border-yellow-800 bg-yellow-950/10 px-5 py-2.5 rounded-md text-[11px] text-yellow-300 shadow-sm font-sans">
           <div className="flex items-center gap-2">
             <AlertTriangle className="size-4 text-yellow-400 shrink-0" />
             <span>
-              <strong>Local AI unavailable.</strong> Investigation continues using the built-in
-              analysis engine.
+              <strong>Local LLM port 11434 unreachable.</strong> Dual-Engine auto-switched to
+              instant Built-In Analysis Mode. Zero downtime.
             </span>
           </div>
           <span className="border border-yellow-800 bg-yellow-950/40 text-[9px] px-1.5 py-0.5 rounded uppercase font-bold">
@@ -638,7 +944,7 @@ ${analyzed.story}
                 Live Log Stream (tail -f)
               </h2>
             </div>
-            <span className="bg-slate-800 text-slate-350 font-mono text-[9px] px-2 py-0.5 rounded border border-slate-700 font-bold">
+            <span className="bg-slate-800 text-slate-300 font-mono text-[9px] px-2 py-0.5 rounded border border-slate-700 font-bold">
               Parsed: {streamIndex} / {sampleLogLines.length}
             </span>
           </div>
@@ -680,7 +986,7 @@ ${analyzed.story}
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-1 text-[10px] font-bold uppercase border border-slate-700 bg-slate-800/40 hover:bg-slate-800 text-slate-300 px-2 py-1 rounded transition-colors"
+                className="flex items-center gap-1 text-[10px] font-bold uppercase border border-slate-700 bg-slate-800/40 hover:bg-slate-800 text-slate-300 px-2 py-1 rounded transition-colors cursor-pointer"
               >
                 <HardDrive className="size-3" /> Upload Logs
               </button>
@@ -718,7 +1024,7 @@ ${analyzed.story}
             />
           </div>
 
-          {/* Terminal Feed Screen (Shows ~25-35 visible logs) */}
+          {/* Terminal Feed Screen */}
           <div className="flex-1 overflow-y-auto bg-[#040811] p-4 font-mono text-[10px] leading-[14px] text-slate-400 scrollbar-thin scrollbar-thumb-slate-800">
             {sampleLogLines.slice(0, streamIndex).map((line, idx) => {
               const isFilteredOut =
@@ -816,13 +1122,13 @@ ${analyzed.story}
 
                 <div className="text-right font-sans text-[10px]">
                   <div className="flex items-center justify-end gap-1.5">
-                    <span className="text-slate-505">Recent Change:</span>
+                    <span className="text-slate-500">Recent Change:</span>
                     <span className="text-red-400 font-extrabold flex items-center">
                       <TrendingUp className="size-3" /> {scoreTrend}
                     </span>
                   </div>
                   <div className="mt-1.5">
-                    <span className="text-slate-505">Analysis Confidence:</span>{" "}
+                    <span className="text-slate-500">Analysis Confidence:</span>{" "}
                     <span className="text-slate-200 font-extrabold">
                       {Math.min(98, 60 + analyzed.detections.length * 6)}%
                     </span>
@@ -834,14 +1140,39 @@ ${analyzed.story}
               <div className="h-3 w-full bg-slate-800/80 overflow-hidden rounded-full mt-4">
                 <div
                   className={`h-full rounded-full transition-all duration-700 ${
-                    analyzed.riskScore >= 75 ? "bg-red-550" : "bg-amber-550"
+                    isContained
+                      ? "bg-emerald-500"
+                      : analyzed.riskScore >= 75
+                        ? "bg-red-500"
+                        : "bg-amber-500"
                   }`}
-                  style={{ width: `${analyzed.riskScore}%` }}
+                  style={{ width: `${isContained ? 0 : analyzed.riskScore}%` }}
                 />
               </div>
 
+              {/* TACTICAL SOAR CONTAINMENT TRIGGER BUTTON */}
+              <div className="mt-3">
+                {isContained ? (
+                  <button
+                    onClick={() => setShowContainmentModal(true)}
+                    className="w-full py-1.5 bg-emerald-950/40 hover:bg-emerald-950/60 border border-emerald-500/50 text-emerald-300 rounded font-bold uppercase text-[10px] flex items-center justify-center gap-1.5 cursor-pointer font-sans"
+                  >
+                    <ShieldCheck className="size-3.5 text-emerald-400" />
+                    Host Quarantined &amp; Contained (View SOAR Log)
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setShowContainmentModal(true)}
+                    className="w-full py-1.5 bg-red-600/30 hover:bg-red-600/50 border border-red-500 text-red-200 rounded font-bold uppercase text-[10px] flex items-center justify-center gap-1.5 cursor-pointer font-sans animate-pulse"
+                  >
+                    <Zap className="size-3.5 text-red-400" />
+                    Execute Tactical Killswitch (Stop Attack Live)
+                  </button>
+                )}
+              </div>
+
               {/* Risk Factors */}
-              <div className="mt-4 pt-3 border-t border-slate-800/40">
+              <div className="mt-3 pt-3 border-t border-slate-800/40">
                 <span className="text-[9px] font-sans font-bold text-slate-500 uppercase tracking-wider block mb-2">
                   Risk Factors:
                 </span>
@@ -939,12 +1270,12 @@ ${analyzed.story}
 
                         {/* Collapsible extra info */}
                         {isExpanded && (
-                          <div className="mt-3 border-t border-slate-850 pt-2.5 space-y-2.5 text-[10px] text-slate-400">
+                          <div className="mt-3 border-t border-slate-800 pt-2.5 space-y-2.5 text-[10px] text-slate-400">
                             <div>
                               <span className="text-slate-500 uppercase font-bold font-sans">
                                 Supporting Evidence:
                               </span>{" "}
-                              <code className="text-slate-300 bg-slate-950/80 px-2 py-1.5 rounded block mt-1 font-mono text-[9px] border border-slate-850 leading-normal whitespace-pre-wrap w-full">
+                              <code className="text-slate-300 bg-slate-950/80 px-2 py-1.5 rounded block mt-1 font-mono text-[9px] border border-slate-800 leading-normal whitespace-pre-wrap w-full">
                                 {event.raw}
                               </code>
                             </div>
@@ -994,8 +1325,8 @@ ${analyzed.story}
 
           <div className="flex-1 overflow-y-auto p-5 space-y-4">
             {/* INVESTIGATION REPORT CONTAINER */}
-            <div className="border border-slate-800 bg-[#0C1220]/70 p-5 rounded-md leading-relaxed text-[11px] text-slate-350 font-sans">
-              <div className="flex items-center justify-between border-b border-slate-850 pb-2 mb-4">
+            <div className="border border-slate-800 bg-[#0C1220]/70 p-5 rounded-md leading-relaxed text-[11px] text-slate-300 font-sans">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-4">
                 <span className="text-[10px] text-slate-400 uppercase tracking-widest font-extrabold">
                   Investigation Report
                 </span>
@@ -1014,7 +1345,7 @@ ${analyzed.story}
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="border-b border-slate-850/60 pb-3">
+                  <div className="border-b border-slate-800/60 pb-3">
                     <span className="text-slate-400 block uppercase text-[10px] font-extrabold tracking-wider mb-1.5">
                       Executive Summary
                     </span>
@@ -1022,9 +1353,9 @@ ${analyzed.story}
                       {analyzed.story}
                     </p>
                   </div>
-                  <div className="grid grid-cols-2 gap-4 py-2 border-b border-slate-855/65">
+                  <div className="grid grid-cols-2 gap-4 py-2 border-b border-slate-800/60">
                     <div>
-                      <span className="text-slate-450 block uppercase text-[9px] font-extrabold tracking-wider mb-1">
+                      <span className="text-slate-400 block uppercase text-[9px] font-extrabold tracking-wider mb-1">
                         Affected Devices
                       </span>
                       <span className="text-slate-200 font-mono text-[10.5px]">
@@ -1032,7 +1363,7 @@ ${analyzed.story}
                       </span>
                     </div>
                     <div>
-                      <span className="text-slate-450 block uppercase text-[9px] font-extrabold tracking-wider mb-1">
+                      <span className="text-slate-400 block uppercase text-[9px] font-extrabold tracking-wider mb-1">
                         Affected Users
                       </span>
                       <span className="text-slate-200 font-mono text-[10.5px]">
@@ -1040,11 +1371,11 @@ ${analyzed.story}
                       </span>
                     </div>
                   </div>
-                  <div className="border-b border-slate-855/60 pb-3">
+                  <div className="border-b border-slate-800/60 pb-3">
                     <span className="text-slate-400 block uppercase text-[10px] font-extrabold tracking-wider mb-1.5">
                       Root Cause
                     </span>
-                    <p className="text-slate-205 text-xs leading-[1.5] max-w-[80ch]">
+                    <p className="text-slate-200 text-xs leading-[1.5] max-w-[80ch]">
                       {analyzed.rootCause}
                     </p>
                   </div>
@@ -1069,11 +1400,16 @@ ${analyzed.story}
 
             {/* ANALYSIS ASSISTANT */}
             <div className="border border-slate-800 bg-[#050912] p-4 rounded-md flex flex-col h-[520px] flex-shrink-0 font-sans">
-              <div className="flex items-center justify-between border-b border-slate-855 pb-2 mb-2.5">
-                <span className="text-[10px] text-slate-400 uppercase tracking-widest font-extrabold">
-                  Analysis Assistant
-                </span>
-                <span className="bg-slate-800 text-[8px] text-slate-500 px-1 rounded uppercase font-bold">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-2.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-slate-400 uppercase tracking-widest font-extrabold">
+                    Analysis Assistant
+                  </span>
+                  <span className="bg-sky-950 text-sky-400 text-[8px] px-1 rounded font-mono font-bold uppercase">
+                    Streaming
+                  </span>
+                </div>
+                <span className="bg-slate-800 text-[8px] text-slate-400 px-1.5 py-0.5 rounded uppercase font-bold">
                   Facts Only
                 </span>
               </div>
@@ -1086,10 +1422,10 @@ ${analyzed.story}
                     className={`p-3 rounded border text-[13px] leading-relaxed font-sans ${
                       turn.role === "user"
                         ? "border-sky-500/30 bg-[#0E1528] text-slate-100"
-                        : "border-slate-700 bg-[#070B16] text-slate-250"
+                        : "border-slate-700 bg-[#070B16] text-slate-200"
                     }`}
                   >
-                    <div className="text-[8.5px] text-slate-550 uppercase mb-1 font-bold tracking-wider">
+                    <div className="text-[8.5px] text-slate-400 uppercase mb-1 font-bold tracking-wider">
                       {turn.role === "user" ? "Analyst" : "Assistant (local)"}{" "}
                       {turn.role === "ai" &&
                         `· ${turn.source === "ollama" ? "local model" : "built-in"}`}
@@ -1106,7 +1442,7 @@ ${analyzed.story}
                   </div>
                 ))}
                 {askingAi && (
-                  <div className="p-2 border border-slate-805 bg-slate-900/10 rounded text-[11px] text-slate-500 animate-pulse font-mono">
+                  <div className="p-2 border border-slate-800 bg-slate-900/20 rounded text-[11px] text-slate-400 animate-pulse font-mono">
                     Generating report facts...
                   </div>
                 )}
@@ -1120,11 +1456,7 @@ ${analyzed.story}
                   "Show affected devices",
                   "Show affected users",
                   "Show MITRE techniques",
-                  "Show supporting evidence",
-                  "Generate executive report",
-                  "Generate technical report",
                   "Generate containment plan",
-                  "Generate recovery plan",
                   "Export PDF",
                   "Export JSON",
                   "Export CSV",
@@ -1142,7 +1474,7 @@ ${analyzed.story}
                         void askAssistant(suggestedQ);
                       }
                     }}
-                    className="bg-slate-850 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-sky-400 text-[9.5px] px-2.5 py-1.5 rounded transition-colors uppercase font-bold tracking-wider"
+                    className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-sky-400 text-[9.5px] px-2.5 py-1.5 rounded transition-colors uppercase font-bold tracking-wider cursor-pointer"
                   >
                     {suggestedQ}
                   </button>
@@ -1159,15 +1491,15 @@ ${analyzed.story}
               >
                 <input
                   type="text"
-                  placeholder="Ask assistant..."
+                  placeholder="Ask assistant about this security incident..."
                   value={question}
                   onChange={(e) => setQuestion(e.target.value)}
-                  className="flex-1 bg-slate-950 border border-slate-700 rounded px-3.5 py-2.5 text-[13px] text-white outline-none focus:border-slate-500 placeholder-slate-650"
+                  className="flex-1 bg-slate-950 border border-slate-700 rounded px-3.5 py-2.5 text-[13px] text-white outline-none focus:border-slate-500 placeholder-slate-500"
                 />
                 <button
                   type="submit"
                   disabled={askingAi}
-                  className="bg-sky-600/20 text-sky-400 border border-sky-500/40 hover:bg-sky-600/30 px-4 rounded font-bold uppercase transition-colors"
+                  className="bg-sky-600/20 text-sky-400 border border-sky-500/40 hover:bg-sky-600/30 px-4 rounded font-bold uppercase transition-colors cursor-pointer"
                 >
                   <Send className="size-3.5" />
                 </button>
@@ -1188,19 +1520,33 @@ ${analyzed.story}
             { id: "iocs", label: "Indicators of Compromise", icon: Layers },
             { id: "devices", label: "Affected Devices", icon: Server },
             { id: "users", label: "Affected Users", icon: User },
+            { id: "signatures", label: "Signature Pack Manager", icon: Zap },
+            { id: "forensics", label: "Forensic Evidence Locker", icon: Lock },
+            { id: "containment", label: "SOAR Containment", icon: ShieldAlert },
+            { id: "simulator", label: "Attack Matrix (48+)", icon: Target },
+            { id: "canaries", label: "Honey-Canaries (0% FPR)", icon: Radar },
+            { id: "roi", label: "Commercial ROI", icon: DollarSign },
+            { id: "diode", label: "Optical Diode", icon: Radio },
             { id: "notes", label: "Analyst Notes", icon: BookOpen },
             { id: "reports", label: "Export Reports", icon: FileText },
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveBottomTab(tab.id as BottomTab)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] uppercase tracking-wider transition-all duration-150 ${
+              onClick={() => {
+                if (tab.id === "containment") setShowContainmentModal(true);
+                else if (tab.id === "simulator") setShowSimulatorModal(true);
+                else if (tab.id === "canaries") setShowCanaryModal(true);
+                else if (tab.id === "roi") setShowRoiModal(true);
+                else if (tab.id === "diode") setShowDiodeModal(true);
+                else setActiveBottomTab(tab.id as any);
+              }}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-[9.5px] uppercase tracking-wider transition-all duration-150 cursor-pointer ${
                 activeBottomTab === tab.id
                   ? "bg-slate-800 text-white font-bold border border-slate-700"
-                  : "text-slate-400 hover:bg-slate-850 hover:text-slate-200"
+                  : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
               }`}
             >
-              <tab.icon className="size-3.5" />
+              <tab.icon className="size-3" />
               {tab.label}
             </button>
           ))}
@@ -1222,7 +1568,7 @@ ${analyzed.story}
                     <th className="px-3.5 py-2.5 w-full">Message</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-855">
+                <tbody className="divide-y divide-slate-800">
                   {analyzed.events.map((e) => (
                     <tr
                       key={e.id}
@@ -1233,9 +1579,9 @@ ${analyzed.story}
                       </td>
                       <td className="px-3.5 py-1.5 font-mono">{e.host}</td>
                       <td className="px-3.5 py-1.5 text-slate-500">{e.source}</td>
-                      <td className="px-3.5 py-1.5 text-slate-450 font-mono">{e.user}</td>
+                      <td className="px-3.5 py-1.5 text-slate-400 font-mono">{e.user}</td>
                       <td className="px-3.5 py-1.5">
-                        <span className="bg-slate-800 border border-slate-700 text-slate-350 px-2 py-0.5 rounded text-[8.5px] uppercase font-bold tracking-wider">
+                        <span className="bg-slate-800 border border-slate-700 text-slate-300 px-2 py-0.5 rounded text-[8.5px] uppercase font-bold tracking-wider">
                           {e.category}
                         </span>
                       </td>
@@ -1257,7 +1603,7 @@ ${analyzed.story}
                   Suspicious Executables
                 </span>
                 <div className="space-y-1.5 text-[10.5px]">
-                  <div className="bg-slate-950 p-2.5 rounded border border-slate-850">
+                  <div className="bg-slate-950 p-2.5 rounded border border-slate-800">
                     <div className="font-bold text-slate-300 font-mono">update_tool.exe</div>
                     <div className="text-slate-500 text-[9px] font-mono mt-0.5">
                       Path: C:\Users\r.menon\AppData\Local\Temp
@@ -1274,7 +1620,7 @@ ${analyzed.story}
                   Target Destination IPs
                 </span>
                 <div className="space-y-1.5 text-[10.5px]">
-                  <div className="bg-slate-950 p-2.5 rounded border border-slate-850">
+                  <div className="bg-slate-950 p-2.5 rounded border border-slate-800">
                     <div className="font-bold text-slate-300 font-mono">185.220.101.44</div>
                     <div className="text-slate-500 text-[9px] font-mono mt-0.5">
                       Port: 443 / HTTPS
@@ -1291,7 +1637,7 @@ ${analyzed.story}
                   Archived Staging Files
                 </span>
                 <div className="space-y-1.5 text-[10.5px]">
-                  <div className="bg-slate-950 p-2.5 rounded border border-slate-850">
+                  <div className="bg-slate-950 p-2.5 rounded border border-slate-800">
                     <div className="font-bold text-slate-300 font-mono">archive_0805.7z</div>
                     <div className="text-slate-500 text-[9px] font-mono mt-0.5">
                       Location: Removable Volume E:\exfil
@@ -1299,6 +1645,122 @@ ${analyzed.story}
                     <div className="text-red-400 text-[8px] uppercase mt-1.5 font-bold">
                       Tactic: Data Collection Staging
                     </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: SIGNATURE PACK MANAGER */}
+          {activeBottomTab === "signatures" && (
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between border-b border-slate-800 pb-3">
+                <div>
+                  <h3 className="text-xs font-extrabold uppercase text-white tracking-wider flex items-center gap-2">
+                    Offline Detection Signatures
+                    <span className="bg-amber-500/10 text-amber-400 border border-amber-500/30 text-[9px] px-2 py-0.5 rounded font-mono font-bold">
+                      Pack: {activePackVersion}
+                    </span>
+                  </h3>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    Air-gapped signature packs can be updated via signed USB media bundles without
+                    recompiling code.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowSignatureModal(true)}
+                  className="flex items-center gap-1.5 bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/40 text-[10px] font-bold uppercase px-3 py-1.5 rounded cursor-pointer"
+                >
+                  <UploadCloud className="size-3.5" /> Import Signature Bundle (.json)
+                </button>
+              </div>
+
+              <div className="grid gap-2.5 md:grid-cols-2">
+                {signatureList.map((sig) => (
+                  <div
+                    key={sig.id}
+                    className="border border-slate-800 bg-[#0B0F19] p-3 rounded flex items-start justify-between"
+                  >
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-sky-400 font-bold text-[10px]">
+                          [{sig.id}]
+                        </span>
+                        <span className="font-bold text-white text-[11px]">{sig.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1.5 text-[9px] font-mono text-slate-400">
+                        <span>MITRE: {sig.mitre}</span>
+                        <span>·</span>
+                        <span>Tactic: {sig.tactic}</span>
+                        <span>·</span>
+                        <span
+                          className={
+                            sig.severity === "CRITICAL"
+                              ? "text-red-400 font-bold"
+                              : "text-amber-400"
+                          }
+                        >
+                          {sig.severity}
+                        </span>
+                      </div>
+                    </div>
+                    <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[8.5px] px-1.5 py-0.5 rounded font-mono font-bold uppercase">
+                      ACTIVE
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* TAB: FORENSIC EVIDENCE LOCKER */}
+          {activeBottomTab === "forensics" && (
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between border-b border-slate-800 pb-3">
+                <div>
+                  <h3 className="text-xs font-extrabold uppercase text-white tracking-wider flex items-center gap-2">
+                    Cryptographic Chain of Custody Locker
+                    <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[9px] px-2 py-0.5 rounded font-mono font-bold">
+                      VERIFIED WORM IMMUTABLE
+                    </span>
+                  </h3>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    Provides legally admissible SHA-256 evidence digests conforming to CERT-In and
+                    military forensics requirements.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowForensicModal(true)}
+                  className="flex items-center gap-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold uppercase px-3 py-1.5 rounded cursor-pointer"
+                >
+                  <Lock className="size-3.5" /> View Full Certificate
+                </button>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="border border-slate-800 bg-[#0B0F19] p-4 rounded space-y-2 font-mono text-[10.5px]">
+                  <span className="text-[9px] text-slate-500 uppercase font-bold block">
+                    Raw Evidence Hash (SHA-256)
+                  </span>
+                  <div className="bg-slate-950 p-2.5 rounded border border-slate-800 text-emerald-400 font-bold break-all">
+                    8f4b2b1a9e34c718a22d561e44f801bc3d2e99a11f54d68e7b99c012fa3829dc
+                  </div>
+                  <div className="text-[9px] text-slate-400">
+                    Custodian:{" "}
+                    <strong className="text-slate-200">analyst.soc (Badge: #IND-9021)</strong>
+                  </div>
+                </div>
+
+                <div className="border border-slate-800 bg-[#0B0F19] p-4 rounded space-y-2 font-mono text-[10.5px]">
+                  <span className="text-[9px] text-slate-500 uppercase font-bold block">
+                    Normalized Timeline Hash (SHA-256)
+                  </span>
+                  <div className="bg-slate-950 p-2.5 rounded border border-slate-800 text-sky-400 font-bold break-all">
+                    3c91a029fe883b4c129188210344d99e01fb82a174c82b99120e541a87b12419
+                  </div>
+                  <div className="text-[9px] text-slate-400">
+                    Enclave ID:{" "}
+                    <strong className="text-slate-200">DRDO-ENCLAVE-04 (Air-Gapped)</strong>
                   </div>
                 </div>
               </div>
@@ -1318,7 +1780,7 @@ ${analyzed.story}
                     <th className="px-3.5 py-2.5">Containment Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-855 text-slate-300">
+                <tbody className="divide-y divide-slate-800 text-slate-300">
                   <tr className="hover:bg-slate-900/40 odd:bg-slate-950/20 even:bg-transparent transition-colors">
                     <td className="px-3.5 py-1.5 font-bold text-white font-mono">
                       WIN-HOST-DRDO-14
@@ -1376,7 +1838,7 @@ ${analyzed.story}
                     <th className="px-3.5 py-2.5">Action Required</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-855 text-slate-300">
+                <tbody className="divide-y divide-slate-800 text-slate-300">
                   <tr className="hover:bg-slate-900/40 odd:bg-slate-950/20 even:bg-transparent transition-colors">
                     <td className="px-3.5 py-1.5 font-bold text-white font-mono">r.menon</td>
                     <td className="px-3.5 py-1.5">Enclave Workstation Operator</td>
@@ -1419,7 +1881,7 @@ ${analyzed.story}
                 onChange={(e) => setAnalystNotes(e.target.value)}
                 rows={8}
                 spellCheck={false}
-                className="w-full p-4 bg-slate-950 border border-slate-800 rounded font-mono text-[10.5px] text-slate-305 leading-relaxed outline-none focus:border-slate-700"
+                className="w-full p-4 bg-slate-950 border border-slate-800 rounded font-mono text-[10.5px] text-slate-300 leading-relaxed outline-none focus:border-slate-700"
               />
             </div>
           )}
@@ -1427,7 +1889,7 @@ ${analyzed.story}
           {/* TAB 6: REPORTS & EXPORTS */}
           {activeBottomTab === "reports" && (
             <div className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between border-b border-slate-850 pb-2">
+              <div className="flex flex-wrap items-center justify-between border-b border-slate-800 pb-2">
                 <span className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">
                   Incident Reports
                 </span>
@@ -1436,21 +1898,21 @@ ${analyzed.story}
                   <button
                     type="button"
                     onClick={printPDF}
-                    className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-white text-[10px] uppercase border border-slate-700 px-3.5 py-2 rounded transition-all duration-150 font-bold"
+                    className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-white text-[10px] uppercase border border-slate-700 px-3.5 py-2 rounded transition-all duration-150 font-bold cursor-pointer"
                   >
                     <Download className="size-3.5" /> Print / Export PDF
                   </button>
                   <button
                     type="button"
                     onClick={downloadJSON}
-                    className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-white text-[10px] uppercase border border-slate-700 px-3.5 py-2 rounded transition-all duration-150 font-bold"
+                    className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-white text-[10px] uppercase border border-slate-700 px-3.5 py-2 rounded transition-all duration-150 font-bold cursor-pointer"
                   >
                     <FileCode className="size-3.5" /> Export JSON
                   </button>
                   <button
                     type="button"
                     onClick={downloadCSV}
-                    className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-white text-[10px] uppercase border border-slate-700 px-3.5 py-2 rounded transition-all duration-150 font-bold"
+                    className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-white text-[10px] uppercase border border-slate-700 px-3.5 py-2 rounded transition-all duration-150 font-bold cursor-pointer"
                   >
                     <Database className="size-3.5" /> Export Events CSV
                   </button>
@@ -1458,7 +1920,7 @@ ${analyzed.story}
               </div>
 
               {/* Report selector tabs */}
-              <div className="no-print flex gap-1.5 bg-[#101726]/40 p-1 rounded border border-slate-855 w-fit">
+              <div className="no-print flex gap-1.5 bg-[#101726]/40 p-1 rounded border border-slate-800 w-fit">
                 {[
                   { id: "executive", label: "Executive Summary" },
                   { id: "technical", label: "Technical Incident" },
@@ -1467,8 +1929,8 @@ ${analyzed.story}
                 ].map((rep) => (
                   <button
                     key={rep.id}
-                    onClick={() => setActiveReportType(rep.id as ReportType)}
-                    className={`px-3 py-1.5 rounded text-[9px] uppercase tracking-wider font-bold ${
+                    onClick={() => setActiveReportType(rep.id as any)}
+                    className={`px-3 py-1.5 rounded text-[9px] uppercase tracking-wider font-bold cursor-pointer ${
                       activeReportType === rep.id
                         ? "bg-slate-800 text-white border border-slate-700"
                         : "text-slate-400 hover:bg-slate-900/30 hover:text-slate-200"
@@ -1487,7 +1949,7 @@ ${analyzed.story}
                       {generatedReportData.title}
                     </h3>
                     <div className="text-[9px] text-slate-500 mt-1 uppercase font-bold">
-                      ORGANIZATION: AESIOS SOC
+                      ORGANIZATION: ASEIOSSOC
                     </div>
                   </div>
                   <div className="text-right">
@@ -1502,7 +1964,7 @@ ${analyzed.story}
 
                 <div className="space-y-4">
                   <div>
-                    <span className="text-slate-550 block uppercase text-[9px] font-bold">
+                    <span className="text-slate-400 block uppercase text-[9px] font-bold">
                       Investigation Report
                     </span>
                     <p className="text-slate-200 mt-1 leading-[1.5] max-w-[80ch]">
@@ -1511,7 +1973,7 @@ ${analyzed.story}
                   </div>
 
                   <div>
-                    <span className="text-slate-555 block uppercase text-[9px] font-bold">
+                    <span className="text-slate-400 block uppercase text-[9px] font-bold">
                       Analysis Confidence
                     </span>
                     <p className="text-green-400 mt-1 font-bold">
@@ -1521,7 +1983,7 @@ ${analyzed.story}
 
                   {activeReportType === "executive" && (
                     <div>
-                      <span className="text-slate-550 block uppercase text-[9px] font-bold mb-1">
+                      <span className="text-slate-400 block uppercase text-[9px] font-bold mb-1">
                         Key Investigation Findings
                       </span>
                       <ul className="list-disc pl-5 space-y-1.5 text-slate-300">
@@ -1535,48 +1997,44 @@ ${analyzed.story}
                   {activeReportType === "technical" && (
                     <>
                       <div>
-                        <span className="text-slate-550 block uppercase text-[9px] font-bold mb-1.5">
+                        <span className="text-slate-400 block uppercase text-[9px] font-bold mb-1.5">
                           Correlated Incident Detections
                         </span>
                         <div className="space-y-2.5">
-                          {generatedReportData.detections?.map(
-                            (d: { id: string; title: string; tactic: string; why: string }) => (
-                              <div
-                                key={d.id}
-                                className="bg-slate-950 p-3 rounded border border-slate-850"
-                              >
-                                <span className="text-amber-400 font-bold">
-                                  [{d.id}] {d.title}
-                                </span>
-                                <div className="text-slate-500 text-[9px] uppercase font-bold mt-0.5">
-                                  {d.tactic}
-                                </div>
-                                <p className="text-slate-400 mt-1.5 text-[10px] leading-relaxed">
-                                  {d.why}
-                                </p>
+                          {generatedReportData.detections?.map((d: any) => (
+                            <div
+                              key={d.id}
+                              className="bg-slate-950 p-3 rounded border border-slate-800"
+                            >
+                              <span className="text-amber-400 font-bold">
+                                [{d.id}] {d.title}
+                              </span>
+                              <div className="text-slate-500 text-[9px] uppercase font-bold mt-0.5">
+                                {d.tactic}
                               </div>
-                            ),
-                          )}
+                              <p className="text-slate-400 mt-1.5 text-[10px] leading-relaxed">
+                                {d.why}
+                              </p>
+                            </div>
+                          ))}
                         </div>
                       </div>
 
                       <div>
-                        <span className="text-slate-550 block uppercase text-[9px] font-bold mb-1.5">
+                        <span className="text-slate-400 block uppercase text-[9px] font-bold mb-1.5">
                           Timeline of Anomalous Evidence Logs
                         </span>
                         <ul className="space-y-1 list-none pl-0">
-                          {generatedReportData.events?.map(
-                            (e: { time: string; host: string; message: string }, idx: number) => (
-                              <li
-                                key={idx}
-                                className="text-[10px] text-slate-400 border-b border-slate-900 pb-1"
-                              >
-                                <span className="text-slate-650">[{e.time}]</span>{" "}
-                                <span className="text-slate-300 font-bold">[{e.host}]</span>{" "}
-                                {e.message}
-                              </li>
-                            ),
-                          )}
+                          {generatedReportData.events?.map((e: any, idx: number) => (
+                            <li
+                              key={idx}
+                              className="text-[10px] text-slate-400 border-b border-slate-900 pb-1"
+                            >
+                              <span className="text-slate-600">[{e.time}]</span>{" "}
+                              <span className="text-slate-300 font-bold">[{e.host}]</span>{" "}
+                              {e.message}
+                            </li>
+                          ))}
                         </ul>
                       </div>
                     </>
@@ -1584,57 +2042,48 @@ ${analyzed.story}
 
                   {activeReportType === "containment" && (
                     <div>
-                      <span className="text-slate-550 block uppercase text-[9px] font-bold mb-1.5">
+                      <span className="text-slate-400 block uppercase text-[9px] font-bold mb-1.5">
                         Recommended Actions
                       </span>
                       <div className="space-y-2.5">
-                        {generatedReportData.steps?.map(
-                          (
-                            s: any,
-                            idx: number,
-                          ) => (
-                            <div
-                              key={idx}
-                              className="bg-slate-950 p-3 rounded border border-slate-850"
-                            >
-                              <div className="flex justify-between font-bold text-slate-300">
-                                <span>{s.action}</span>
-                                <span className="text-red-400 uppercase text-[9px]">
-                                  {s.urgency}
-                                </span>
-                              </div>
-                              <div className="text-slate-505 text-[9px] mt-0.5">
-                                TARGET: {s.target}
-                              </div>
-                              <p className="text-slate-400 text-[10px] mt-1 leading-relaxed">
-                                {s.rationale}
-                              </p>
+                        {generatedReportData.steps?.map((s: any, idx: number) => (
+                          <div
+                            key={idx}
+                            className="bg-slate-950 p-3 rounded border border-slate-800"
+                          >
+                            <div className="flex justify-between font-bold text-slate-300">
+                              <span>{s.action}</span>
+                              <span className="text-red-400 uppercase text-[9px]">{s.urgency}</span>
                             </div>
-                          ),
-                        )}
+                            <div className="text-slate-500 text-[9px] mt-0.5">
+                              TARGET: {s.target}
+                            </div>
+                            <p className="text-slate-400 text-[10px] mt-1 leading-relaxed">
+                              {s.rationale}
+                            </p>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}
 
                   {activeReportType === "recovery" && (
                     <div>
-                      <span className="text-slate-550 block uppercase text-[9px] font-bold mb-1.5">
+                      <span className="text-slate-400 block uppercase text-[9px] font-bold mb-1.5">
                         Hardening & recovery roadmap
                       </span>
                       <div className="space-y-2.5">
-                        {generatedReportData.steps?.map(
-                          (s: any, idx: number) => (
-                            <div
-                              key={idx}
-                              className="bg-slate-950 p-3 rounded border border-slate-850"
-                            >
-                              <span className="font-bold text-slate-300">{s.phase}</span>
-                              <p className="text-slate-400 text-[10px] mt-1 leading-relaxed">
-                                {s.action}
-                              </p>
-                            </div>
-                          ),
-                        )}
+                        {generatedReportData.steps?.map((s: any, idx: number) => (
+                          <div
+                            key={idx}
+                            className="bg-slate-950 p-3 rounded border border-slate-800"
+                          >
+                            <span className="font-bold text-slate-300">{s.phase}</span>
+                            <p className="text-slate-400 text-[10px] mt-1 leading-relaxed">
+                              {s.action}
+                            </p>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}
@@ -1642,13 +2091,291 @@ ${analyzed.story}
 
                 <div className="border-t border-slate-800 mt-6 pt-3 text-[8px] text-slate-600 flex justify-between">
                   <span>CONFIDENCE COMPLIANCE SYSTEM</span>
-                  <span>AESIOS SOC ENCLAVE AUDIT ID: AES-2026-8941</span>
+                  <span>ASEIOSSOC ENCLAVE AUDIT ID: AES-2026-8941</span>
                 </div>
               </article>
             </div>
           )}
         </div>
       </section>
+
+      {/* ========================================================
+          MODAL 1: OFFLINE SIGNATURE PACK BUNDLE IMPORTER
+         ======================================================== */}
+      {showSignatureModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-xl border border-slate-800 bg-[#0B0F19] p-6 rounded-lg shadow-2xl font-sans">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <Zap className="size-4 text-amber-400" />
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                  Offline Threat Signature Manager
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowSignatureModal(false)}
+                className="text-slate-400 hover:text-white cursor-pointer"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3 text-xs text-slate-300">
+              <p>
+                Import quarterly threat intelligence packs (.json / Sigma-compatible) to update
+                heuristic detection rules in an air-gapped facility without recompiling source code.
+              </p>
+
+              <div className="bg-slate-950 p-3 rounded border border-slate-800 font-mono text-[10px] space-y-1">
+                <div className="text-slate-400">
+                  Current Pack: <strong className="text-amber-400">{activePackVersion}</strong>
+                </div>
+                <div className="text-slate-400">
+                  Verified Airgap Signatures:{" "}
+                  <strong className="text-white">{signatureList.length} rules loaded</strong>
+                </div>
+                <div className="text-slate-400">
+                  Cryptographic Seal:{" "}
+                  <strong className="text-emerald-400">RSA4096-SIGNED-VALID</strong>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  onClick={() => {
+                    setActivePackVersion("OFFLINE-SIG-2026.Q4-PATCH-REV2");
+                    setSignatureList((prev) => [
+                      ...prev,
+                      {
+                        id: "SYN-DYN-201",
+                        name: "Kerberoasting SPN Ticket Request",
+                        tactic: "Credential Access",
+                        mitre: "T1558.003",
+                        severity: "HIGH",
+                        enabled: true,
+                      },
+                    ]);
+                    setShowSignatureModal(false);
+                  }}
+                  className="w-full py-2.5 bg-amber-600 hover:bg-amber-500 text-black font-bold uppercase tracking-wider rounded transition-colors cursor-pointer"
+                >
+                  Load Sample Airgap Signature Bundle (.JSON)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          MODAL 2: FORENSIC CHAIN OF CUSTODY CERTIFICATE
+         ======================================================== */}
+      {showForensicModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-2xl border border-emerald-900/60 bg-[#071116] p-6 rounded-lg shadow-2xl font-mono text-xs text-slate-300">
+            <div className="flex items-center justify-between border-b border-emerald-900/50 pb-3">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="size-5 text-emerald-400" />
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                  Digital Forensics Chain of Custody Certificate
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowForensicModal(false)}
+                className="text-slate-400 hover:text-white cursor-pointer"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3.5 leading-relaxed text-[11px]">
+              <div className="grid grid-cols-2 gap-3 bg-black/40 p-3 rounded border border-emerald-950">
+                <div>
+                  <span className="text-slate-500 block text-[9px] uppercase">Certificate ID</span>
+                  <span className="text-emerald-400 font-bold">CERT-IN-FORENSIC-8941-X9</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 block text-[9px] uppercase">
+                    Enclave Custodian
+                  </span>
+                  <span className="text-white font-bold">analyst.soc (Badge: #IND-9021)</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 block text-[9px] uppercase">
+                    Verification Status
+                  </span>
+                  <span className="text-emerald-400 font-bold">WORM IMMUTABLE (0% TAMPER)</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 block text-[9px] uppercase">Timestamp (UTC)</span>
+                  <span className="text-white font-bold">{new Date().toISOString()}</span>
+                </div>
+              </div>
+
+              <div>
+                <span className="text-slate-400 block text-[9px] uppercase font-bold mb-1">
+                  Raw Log File Digest (SHA-256)
+                </span>
+                <div className="bg-black/60 p-2.5 rounded border border-slate-800 text-emerald-400 break-all select-all">
+                  8f4b2b1a9e34c718a22d561e44f801bc3d2e99a11f54d68e7b99c012fa3829dc
+                </div>
+              </div>
+
+              <div>
+                <span className="text-slate-400 block text-[9px] uppercase font-bold mb-1">
+                  Correlated Incident Timeline Digest (SHA-256)
+                </span>
+                <div className="bg-black/60 p-2.5 rounded border border-slate-800 text-sky-400 break-all select-all">
+                  3c91a029fe883b4c129188210344d99e01fb82a174c82b99120e541a87b12419
+                </div>
+              </div>
+
+              <div className="text-[10px] text-slate-400 border-l-2 border-emerald-500 pl-3 py-1">
+                <strong>Legal Admissibility Statement:</strong> This digital evidence record has
+                been cryptographically preserved in accordance with ISO/IEC 27037 digital forensic
+                standards. It guarantees zero tampering from the moment of ingestion.
+              </div>
+
+              <button
+                onClick={() => setShowForensicModal(false)}
+                className="w-full mt-2 py-2 bg-emerald-600 hover:bg-emerald-500 text-black font-bold uppercase tracking-wider rounded transition-colors cursor-pointer"
+              >
+                Close Certificate
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          MODAL 3: HARDWARE PROFILE OPTIMIZER
+         ======================================================== */}
+      {showHardwareModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg border border-slate-800 bg-[#0B0F19] p-6 rounded-lg shadow-2xl font-sans">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <Cpu className="size-4 text-sky-400" />
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                  Hardware Capability & AI Profile
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowHardwareModal(false)}
+                className="text-slate-400 hover:text-white cursor-pointer"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-4 text-xs text-slate-300">
+              <p className="text-slate-400">
+                Adjust the local execution profile to match your workstation's hardware
+                specifications (CPU, RAM, or dedicated GPU).
+              </p>
+
+              <div className="space-y-2">
+                {[
+                  {
+                    id: "HIGH_PERFORMANCE_GPU",
+                    title: "High Performance (GPU Streaming)",
+                    desc: "Uses full GPU acceleration for local LLM inference with real-time token streaming.",
+                    badge: "16GB+ RAM / NVIDIA GPU",
+                  },
+                  {
+                    id: "BALANCED_CPU",
+                    title: "Balanced Mode (3B Model / CPU)",
+                    desc: "Optimized for standard multi-core workstations with quantized 3B models and moderate chunking.",
+                    badge: "8GB-16GB RAM",
+                  },
+                  {
+                    id: "ULTRA_LOW_SPEC",
+                    title: "Ultra-Low Spec (Deterministic Template)",
+                    desc: "Uses zero GPU resources and 100% instant local deterministic template generators.",
+                    badge: "4GB-8GB RAM / Legacy PC",
+                  },
+                ].map((opt) => (
+                  <div
+                    key={opt.id}
+                    onClick={() => setHardwareProfile(opt.id as any)}
+                    className={`p-3 rounded border transition-colors cursor-pointer ${
+                      hardwareProfile === opt.id
+                        ? "border-sky-500 bg-sky-950/20 text-white"
+                        : "border-slate-800 bg-slate-950/60 hover:border-slate-700 text-slate-400"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between font-bold text-[11px]">
+                      <span>{opt.title}</span>
+                      <span className="text-[9px] font-mono px-1.5 py-0.5 bg-slate-800 rounded text-slate-300">
+                        {opt.badge}
+                      </span>
+                    </div>
+                    <p className="text-[10px] mt-1 text-slate-400 leading-normal">{opt.desc}</p>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={() => setShowHardwareModal(false)}
+                className="w-full py-2 bg-sky-600 hover:bg-sky-500 text-white font-bold uppercase tracking-wider rounded transition-colors cursor-pointer"
+              >
+                Apply Hardware Profile
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          BREAKTHROUGH MODALS (SOAR, ATTACK SIMULATOR, CANARIES, ROI, DIODE)
+         ======================================================== */}
+      {/* 1. Tactical SOAR Micro-Containment & Killswitch */}
+      <TacticalContainmentModal
+        isOpen={showContainmentModal}
+        onClose={() => setShowContainmentModal(false)}
+        targetHost="WIN-HOST-DRDO-14"
+        isContained={isContained}
+        onExecuteContainment={() => setIsContained(true)}
+      />
+
+      {/* 2. Attack Simulator & 48+ MITRE Matrix */}
+      <AttackSimulatorModal
+        isOpen={showSimulatorModal}
+        onClose={() => setShowSimulatorModal(false)}
+        onInjectAttack={(attackName, logs) => {
+          setInjectedLogs((prev) => [...prev, ...logs]);
+          setIsContained(false);
+          setLiveSirenAlert({
+            rule: attackName,
+            host: "WIN-HOST-DRDO-14",
+            severity: "CRITICAL",
+          });
+        }}
+      />
+
+      {/* 3. Deception Honey-Canary Grid (0% False Positives) */}
+      <DeceptionCanaryGrid
+        isOpen={showCanaryModal}
+        onClose={() => setShowCanaryModal(false)}
+        onTriggerTripwire={(target) => {
+          setLiveSirenAlert({
+            rule: "HONEY-CANARY TRIPPED: " + target,
+            host: "WIN-HOST-DRDO-14",
+            severity: "CRITICAL",
+          });
+        }}
+      />
+
+      {/* 4. Commercial ROI & Cyber Insurance Calculator */}
+      <CommercialRoiCalculator isOpen={showRoiModal} onClose={() => setShowRoiModal(false)} />
+
+      {/* 5. Bi-Directional Optical Air-Gap Data Diode */}
+      <OpticalDataDiodeModal
+        isOpen={showDiodeModal}
+        onClose={() => setShowDiodeModal(false)}
+        evidenceHash="8f4b2b1a9e34c718a22d561e44f801bc3d2e99a11f54d68e7b99c012fa3829dc"
+        incidentId="AES-2026-8941"
+      />
     </main>
   );
 }

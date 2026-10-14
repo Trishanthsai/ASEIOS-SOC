@@ -10,8 +10,11 @@ import {
   Bot,
   FileCheck,
   ChevronRight,
-  ArrowDown,
+  ChevronLeft,
+  ArrowRight,
+  Terminal,
 } from "lucide-react";
+import { ScrollReveal } from "@/components/ui/ScrollReveal";
 
 type Stage = {
   id: number;
@@ -37,7 +40,7 @@ const STAGES: Stage[] = [
   },
   {
     id: 2,
-    label: "Ingestion & Normalization",
+    label: "Normalization",
     icon: Filter,
     title: "2. Canonical Event Normalization",
     desc: "Transforms divergent vendor formats into a unified NormalizedEvent structure with standard UTC timestamps, canonical hosts, and event classifications.",
@@ -130,102 +133,146 @@ export function PipelineSection() {
   const activeStage = STAGES.find((s) => s.id === activeStageId) ?? STAGES[0]!;
 
   return (
-    <section id="pipeline" className="py-16 lg:py-24 border-b border-slate-800/60 bg-[#050811]">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-cyan-500/30 bg-cyan-950/20 px-3 py-1 text-[11px] font-mono font-semibold text-cyan-300">
-            END-TO-END PIPELINE
+    <section id="pipeline" className="relative py-20 lg:py-28 border-b border-slate-800/80 bg-[#050811] overflow-hidden">
+      {/* Background ambient lighting */}
+      <div className="pointer-events-none absolute inset-0 opacity-15">
+        <div className="absolute top-1/2 left-1/3 size-96 rounded-full bg-cyan-600/20 blur-3xl" />
+      </div>
+
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <ScrollReveal direction="up" threshold={0.1}>
+          <div className="text-center max-w-3xl mx-auto">
+            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/40 bg-cyan-950/30 px-3.5 py-1 text-[11px] font-mono font-semibold text-cyan-300">
+              <span className="size-1.5 rounded-full bg-cyan-400 animate-pulse" />
+              END-TO-END PIPELINE
+            </div>
+            <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+              From Raw Logs to Actionable Investigation
+            </h2>
+            <p className="mt-4 text-sm sm:text-base leading-relaxed text-slate-400">
+              ASEIOS-SOC executes a deterministic 9-stage analysis pipeline completely inside the
+              air-gapped enclave. Click through each phase to inspect its technical mechanics.
+            </p>
           </div>
-          <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
-            From Raw Logs to Actionable Investigation
-          </h2>
-          <p className="mt-4 text-sm sm:text-base leading-relaxed text-slate-400">
-            ASEIOS-SOC executes a deterministic 9-stage analysis pipeline completely inside the
-            air-gapped enclave. Click through each phase to inspect its technical mechanics.
-          </p>
-        </div>
+        </ScrollReveal>
 
         {/* Visual Interactive Pipeline Stepper */}
-        <div className="mt-12 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-slate-800">
-          <div className="flex items-center justify-between min-w-[900px] gap-1 px-2">
-            {STAGES.map((s, idx) => {
-              const isActive = s.id === activeStageId;
-              const Icon = s.icon;
-              return (
-                <div key={s.id} className="flex items-center flex-1">
-                  <button
-                    onClick={() => setActiveStageId(s.id)}
-                    className={`group flex flex-col items-center gap-2 p-2.5 rounded-lg border text-center transition-all w-full ${
-                      isActive
-                        ? "border-cyan-500 bg-cyan-950/40 text-cyan-300 shadow-md shadow-cyan-950/50"
-                        : "border-slate-800 bg-[#090e1a] text-slate-400 hover:border-slate-700 hover:text-slate-200"
-                    }`}
-                  >
-                    <div
-                      className={`grid size-8 place-items-center rounded-md border text-xs ${
+        <ScrollReveal direction="up" delay={150} threshold={0.1} className="mt-14">
+          <div className="overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-slate-800">
+            <div className="flex items-center justify-between min-w-[900px] gap-1 px-1">
+              {STAGES.map((s, idx) => {
+                const isActive = s.id === activeStageId;
+                const Icon = s.icon;
+                return (
+                  <div key={s.id} className="flex items-center flex-1">
+                    <button
+                      onClick={() => setActiveStageId(s.id)}
+                      className={`group flex flex-col items-center gap-2 p-3 rounded-xl border text-center transition-all duration-200 w-full cursor-pointer ${
                         isActive
-                          ? "border-cyan-400 bg-cyan-900/60 text-cyan-200"
-                          : "border-slate-700 bg-slate-800/60 text-slate-400 group-hover:text-slate-200"
+                          ? "border-cyan-400/80 bg-cyan-950/50 text-cyan-300 shadow-lg shadow-cyan-950/50 scale-[1.02]"
+                          : "border-slate-800/80 bg-[#080e1c] text-slate-400 hover:border-slate-700 hover:text-slate-200"
                       }`}
                     >
-                      <Icon className="size-4" />
-                    </div>
-                    <span className="font-mono text-[10px] font-bold uppercase tracking-wider line-clamp-1">
-                      {s.label}
-                    </span>
-                  </button>
-                  {idx < STAGES.length - 1 && (
-                    <ChevronRight className="size-3.5 text-slate-600 shrink-0 mx-0.5" />
-                  )}
-                </div>
-              );
-            })}
+                      <div
+                        className={`grid size-9 place-items-center rounded-lg border text-xs transition-transform duration-200 group-hover:scale-110 ${
+                          isActive
+                            ? "border-cyan-400 bg-cyan-900/60 text-cyan-200 shadow-xs shadow-cyan-400/40"
+                            : "border-slate-700 bg-slate-800/60 text-slate-400 group-hover:text-slate-200"
+                        }`}
+                      >
+                        <Icon className="size-4" />
+                      </div>
+                      <span className="font-mono text-[10px] font-bold uppercase tracking-wider line-clamp-1">
+                        {s.label}
+                      </span>
+                    </button>
+                    {idx < STAGES.length - 1 && (
+                      <ChevronRight className="size-3.5 text-slate-700 shrink-0 mx-0.5" />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        </ScrollReveal>
 
         {/* Selected Stage Detail Card */}
-        <div className="mt-8 rounded-xl border border-slate-800 bg-[#0a0f1d] p-6 lg:p-8 shadow-xl">
-          <div className="grid lg:grid-cols-2 gap-8 items-start">
-            <div>
-              <div className="flex items-center gap-2 text-xs font-mono font-bold text-cyan-400 uppercase">
-                <span className="rounded bg-cyan-950 px-2 py-0.5 border border-cyan-800">
-                  STAGE 0{activeStage.id} OF 09
-                </span>
-                <span>{activeStage.label}</span>
-              </div>
-              <h3 className="mt-3 text-xl font-extrabold text-white sm:text-2xl">
-                {activeStage.title}
-              </h3>
-              <p className="mt-3 text-xs sm:text-sm leading-relaxed text-slate-300">
-                {activeStage.desc}
-              </p>
-
-              <div className="mt-5 rounded-md border border-slate-800 bg-slate-950/60 p-4">
-                <h4 className="font-mono text-[11px] font-bold uppercase text-slate-400 tracking-wider">
-                  Enclave Execution Mechanism
-                </h4>
-                <p className="mt-1 text-xs text-slate-300 leading-relaxed">
-                  {activeStage.mechanism}
+        <ScrollReveal direction="up" delay={250} threshold={0.1} className="mt-6">
+          <div className="rounded-2xl border border-slate-800/90 bg-[#090f20] p-6 lg:p-9 shadow-2xl">
+            <div className="grid lg:grid-cols-2 gap-8 items-start">
+              <div>
+                <div className="flex items-center gap-2 text-xs font-mono font-bold text-cyan-400 uppercase">
+                  <span className="rounded-md bg-cyan-950/80 px-2.5 py-1 border border-cyan-800/80">
+                    STAGE 0{activeStage.id} OF 09
+                  </span>
+                  <span>{activeStage.label}</span>
+                </div>
+                <h3 className="mt-3 text-xl font-extrabold text-white sm:text-2xl">
+                  {activeStage.title}
+                </h3>
+                <p className="mt-3 text-xs sm:text-sm leading-relaxed text-slate-300">
+                  {activeStage.desc}
                 </p>
-              </div>
-            </div>
 
-            {/* Live Data / Logic Sample */}
-            <div className="rounded-lg border border-slate-800 bg-[#040711] p-4 font-mono text-xs">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-3 text-[11px] text-slate-500">
-                <span>TELEMETRY ARTIFACT SAMPLE</span>
-                <span className="text-emerald-400 font-bold">AIR-GAP PROCESSED</span>
+                <div className="mt-6 rounded-xl border border-slate-800/90 bg-slate-950/70 p-4">
+                  <div className="flex items-center gap-2 font-mono text-[11px] font-bold uppercase text-slate-400 tracking-wider">
+                    <Terminal className="size-3.5 text-cyan-400" />
+                    <span>Enclave Execution Mechanism</span>
+                  </div>
+                  <p className="mt-2 text-xs text-slate-300 leading-relaxed">
+                    {activeStage.mechanism}
+                  </p>
+                </div>
+
+                <div className="mt-6 flex items-center gap-2">
+                  <button
+                    disabled={activeStageId === 1}
+                    onClick={() => setActiveStageId((prev) => Math.max(1, prev - 1))}
+                    className={`flex items-center gap-1 rounded-lg border px-3 py-1.5 font-mono text-xs transition-colors cursor-pointer ${
+                      activeStageId === 1
+                        ? "border-slate-800 text-slate-600 cursor-not-allowed opacity-50"
+                        : "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-600 hover:text-white"
+                    }`}
+                  >
+                    <ChevronLeft className="size-3.5" />
+                    <span>Previous Phase</span>
+                  </button>
+
+                  <button
+                    disabled={activeStageId === STAGES.length}
+                    onClick={() => setActiveStageId((prev) => Math.min(STAGES.length, prev + 1))}
+                    className={`flex items-center gap-1 rounded-lg border px-3 py-1.5 font-mono text-xs font-semibold transition-colors cursor-pointer ${
+                      activeStageId === STAGES.length
+                        ? "border-slate-800 text-slate-600 cursor-not-allowed opacity-50"
+                        : "border-cyan-500/40 bg-cyan-950/40 text-cyan-300 hover:border-cyan-400 hover:bg-cyan-900/50 hover:text-white"
+                    }`}
+                  >
+                    <span>Next Phase</span>
+                    <ChevronRight className="size-3.5" />
+                  </button>
+                </div>
               </div>
-              <pre className="text-slate-300 text-[11px] leading-relaxed whitespace-pre-wrap overflow-x-auto bg-slate-950/80 p-3 rounded border border-slate-900">
-                {activeStage.sample}
-              </pre>
-              <div className="mt-3 text-[10px] text-slate-500 flex justify-between items-center">
-                <span>Zero cloud calls made</span>
-                <span>Deterministic output</span>
+
+              {/* Live Data / Logic Sample */}
+              <div className="rounded-xl border border-slate-800 bg-[#040711] p-5 font-mono text-xs">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-3 text-[11px] text-slate-500">
+                  <span className="font-bold text-cyan-400">// TELEMETRY ARTIFACT SAMPLE</span>
+                  <span className="text-emerald-400 font-bold flex items-center gap-1">
+                    <span className="size-1.5 rounded-full bg-emerald-400" />
+                    AIR-GAP PROCESSED
+                  </span>
+                </div>
+                <pre className="text-sky-300 text-[11px] leading-relaxed whitespace-pre-wrap overflow-x-auto bg-slate-950/90 p-4 rounded-lg border border-slate-900 font-mono">
+                  {activeStage.sample}
+                </pre>
+                <div className="mt-4 text-[10px] text-slate-500 flex justify-between items-center font-mono">
+                  <span>Zero outbound requests</span>
+                  <span>100% deterministic output</span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        </ScrollReveal>
       </div>
     </section>
   );
