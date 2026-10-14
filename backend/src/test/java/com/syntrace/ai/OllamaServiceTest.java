@@ -46,7 +46,7 @@ class OllamaServiceTest {
         postUriSpec = mock(RestClient.RequestBodyUriSpec.class, Answers.RETURNS_SELF);
         responseSpec = mock(RestClient.ResponseSpec.class);
 
-        when(restClient.get()).thenReturn((RestClient.RequestHeadersUriSpec) getUriSpec);
+        doReturn(getUriSpec).when(restClient).get();
         when(restClient.post()).thenReturn(postUriSpec);
         
         when(getUriSpec.retrieve()).thenReturn(responseSpec);

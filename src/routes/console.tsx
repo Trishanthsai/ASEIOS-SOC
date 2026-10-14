@@ -1590,12 +1590,7 @@ ${analyzed.story}
                       <div className="space-y-2.5">
                         {generatedReportData.steps?.map(
                           (
-                            s: {
-                              action: string;
-                              urgency: string;
-                              target: string;
-                              rationale: string;
-                            },
+                            s: any,
                             idx: number,
                           ) => (
                             <div
@@ -1628,7 +1623,7 @@ ${analyzed.story}
                       </span>
                       <div className="space-y-2.5">
                         {generatedReportData.steps?.map(
-                          (s: { phase: string; action: string }, idx: number) => (
+                          (s: any, idx: number) => (
                             <div
                               key={idx}
                               className="bg-slate-950 p-3 rounded border border-slate-850"

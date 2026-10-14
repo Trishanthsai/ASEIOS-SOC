@@ -266,15 +266,15 @@ function NodeCard({
 export function ArchitectureSection() {
   const [activeNodeId, setActiveNodeId] = useState<string>("engine");
 
-  const activeNode =
-    ARCH_NODES.find((n) => n.id === activeNodeId) || ARCH_NODES[1];
+  const activeNode: ArchNode =
+    ARCH_NODES.find((n) => n.id === activeNodeId) ?? ARCH_NODES[1]!;
 
-  const nodeSources = ARCH_NODES[0];
-  const nodeEngine = ARCH_NODES[1];
-  const nodeThreat = ARCH_NODES[2];
-  const nodeEvidence = ARCH_NODES[3];
-  const nodeAi = ARCH_NODES[4];
-  const nodeConsole = ARCH_NODES[5];
+  const nodeSources = ARCH_NODES[0]!;
+  const nodeEngine = ARCH_NODES[1]!;
+  const nodeThreat = ARCH_NODES[2]!;
+  const nodeEvidence = ARCH_NODES[3]!;
+  const nodeAi = ARCH_NODES[4]!;
+  const nodeConsole = ARCH_NODES[5]!;
 
   return (
     <section

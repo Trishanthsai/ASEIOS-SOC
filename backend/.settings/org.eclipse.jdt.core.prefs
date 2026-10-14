@@ -1,0 +1,16 @@
+eclipse.preferences.version=1
+org.eclipse.jdt.core.compiler.problem.unusedImport=ignore
+org.eclipse.jdt.core.compiler.problem.rawTypeReference=ignore
+org.eclipse.jdt.core.compiler.problem.uncheckedTypeOperation=ignore
+org.eclipse.jdt.core.compiler.problem.missingSerialVersion=ignore
+org.eclipse.jdt.core.compiler.problem.unusedLocal=ignore
+org.eclipse.jdt.core.compiler.problem.unusedParameter=ignore
+org.eclipse.jdt.core.compiler.problem.deprecation=ignore
+org.eclipse.jdt.core.compiler.problem.tasks=
+org.eclipse.jdt.core.compiler.problem.typeHiding=ignore
+org.eclipse.jdt.core.compiler.problem.methodWithConstructorName=ignore
+org.eclipse.jdt.core.compiler.problem.emptyStatement=ignore
+org.eclipse.jdt.core.compiler.problem.staticAccessReceiver=ignore
+org.eclipse.jdt.core.compiler.problem.unusedPrivateMember=ignore
+org.eclipse.jdt.core.compiler.problem.potentialNullReference=ignore
+org.eclipse.jdt.core.compiler.problem.nullReference=ignore
